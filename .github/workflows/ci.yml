@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A suíte atual (test/*.test.js) só exercita funções puras + crypto e depende
+# apenas de `jsonwebtoken` — não precisa dos @kyvvohq/* (GitHub Packages
+# privado) nem de um Postgres. O `npm install` completo + testes de integração
+# rodam localmente / na EC2, e passam a rodar aqui quando o secret
+# NPM_PACKAGES_TOKEN for adicionado a este repo.
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install jsonwebtoken --no-save --no-audit --no-fund
+      - run: node --test test/*.test.js
+      - name: node -c em todos os .js
+        run: |
+          find . -name "*.js" -not -path "./node_modules/*" -print0 \
+            | xargs -0 -n1 node -c

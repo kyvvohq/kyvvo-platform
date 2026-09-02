@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # @kyvvohq/* são pacotes internos (GitHub Packages privado), versionados
+    # por tag e atualizados de propósito — Dependabot não precisa mexer.
+    ignore:
+      - dependency-name: "@kyvvohq/*"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

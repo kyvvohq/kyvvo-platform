@@ -1,0 +1,65 @@
+name: Deploy to EC2
+
+# DORMENTE nesta leva. Só `workflow_dispatch` — nenhum trigger de push — até o
+# serviço `platform` existir no docker-compose da EC2 (kyvvohq/kyvvo-infra) e
+# ter DNS/nginx/SSM prontos (ver o plano P3, leva de corte). Quando ativar:
+# descomentar o bloco `push:` abaixo, no mesmo formato de
+# kyvvo-people/.github/workflows/deploy.yml.
+#
+# Requer os secrets EC2_HOST, EC2_USER, EC2_SSH_KEY_B64 (mesma chave dos
+# outros repos) — ainda NÃO configurados neste repo.
+
+on:
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - ".npmrc"
+  #     - "index.js"
+  #     - "package.json"
+  #     - "package-lock.json"
+  #     - "lib/**"
+  #     - "routes/**"
+  #     - "db/**"
+  #     - "token-service.js"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar chave SSH
+        id: sshkey
+        run: |
+          KEY="$(printf '%s' '${{ secrets.EC2_SSH_KEY_B64 }}' | base64 -d)"
+          while IFS= read -r line; do [ -n "$line" ] && echo "::add-mask::$line"; done <<< "$KEY"
+          {
+            echo 'value<<KEYEOF'
+            printf '%s\n' "$KEY"
+            echo 'KEYEOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Gravar versão do deploy
+        run: |
+          COMMIT_CURTO="${GITHUB_SHA::7}"
+          echo "{\"commit\":\"${COMMIT_CURTO}\",\"deployedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > version.json
+
+      - name: Copiar arquivos pra EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ steps.sshkey.outputs.value }}
+          source: ".npmrc,index.js,package.json,package-lock.json,version.json,token-service.js,lib/**,routes/**,db/**"
+          target: "/opt/platform"
+
+      - name: Regenerar env do SSM + recriar container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ steps.sshkey.outputs.value }}
+          script: |
+            sudo /opt/kyvvo/scripts/gen-env-from-ssm.sh
+            cd /opt/kyvvo && sudo docker compose up -d --force-recreate platform
