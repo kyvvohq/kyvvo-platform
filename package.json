@@ -13,7 +13,7 @@
     "@kyvvohq/db-migrate": "^1.0.0",
     "@fastify/jwt": "^10.2.2",
     "bcryptjs": "^2.4.3",
-    "dotenv": "^16.4.5",
+    "dotenv": "^17.4.2",
     "fastify": "^5.0.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.12.0"
