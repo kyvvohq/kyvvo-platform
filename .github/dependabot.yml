@@ -5,11 +5,26 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-    # @kyvvohq/* são pacotes internos (GitHub Packages privado), versionados
-    # por tag e atualizados de propósito — Dependabot não precisa mexer.
     ignore:
+      # @kyvvohq/* são pacotes internos (GitHub Packages privado), versionados
+      # por tag e atualizados de propósito.
       - dependency-name: "@kyvvohq/*"
+      # Parear com kyvvo/kyvvo-people — subir major só num esforço coordenado
+      # entre os repos, não repo a repo.
+      - dependency-name: "dotenv"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "bcryptjs"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "fastify"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # appleboy/*-action e actions/checkout: manter a mesma versão dos outros
+      # workflows de deploy da org.
+      - dependency-name: "appleboy/scp-action"
+      - dependency-name: "appleboy/ssh-action"
+      - dependency-name: "actions/checkout"
+        update-types: ["version-update:semver-major"]
