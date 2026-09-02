@@ -7,9 +7,11 @@ on:
 
 # A suíte atual (test/*.test.js) só exercita funções puras + crypto e depende
 # apenas de `jsonwebtoken` — não precisa dos @kyvvohq/* (GitHub Packages
-# privado) nem de um Postgres. O `npm install` completo + testes de integração
-# rodam localmente / na EC2, e passam a rodar aqui quando o secret
-# NPM_PACKAGES_TOKEN for adicionado a este repo.
+# privado) nem de um Postgres. Como o `.npmrc` do repo força autenticação no
+# GitHub Packages pra qualquer `npm install`, a dep de teste é instalada num
+# diretório isolado (sem esse .npmrc) e resolvida via NODE_PATH. O
+# `npm install` completo + testes de integração rodam localmente / na EC2, e
+# passam a rodar aqui quando o secret NPM_PACKAGES_TOKEN for adicionado.
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -18,8 +20,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install jsonwebtoken --no-save --no-audit --no-fund
-      - run: node --test test/*.test.js
+      - name: Dep de teste (jsonwebtoken) isolada
+        run: |
+          mkdir -p "$RUNNER_TEMP/deps" && cd "$RUNNER_TEMP/deps"
+          echo '{"name":"deps","private":true}' > package.json
+          npm install jsonwebtoken@9 --no-audit --no-fund --no-package-lock
+      - name: Testes
+        run: NODE_PATH="$RUNNER_TEMP/deps/node_modules" node --test test/*.test.js
       - name: node -c em todos os .js
         run: |
           find . -name "*.js" -not -path "./node_modules/*" -print0 \
