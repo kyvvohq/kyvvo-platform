@@ -52,7 +52,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ steps.sshkey.outputs.value }}
           source: ".npmrc,index.js,package.json,package-lock.json,version.json,token-service.js,asaas-service.js,lib/**,routes/**,db/**"
-          target: "/opt/platform"
+          target: "/opt/kyvvo/platform"
 
       - name: Regenerar env do SSM + recriar container
         uses: appleboy/ssh-action@v1.0.3
