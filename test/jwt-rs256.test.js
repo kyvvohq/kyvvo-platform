@@ -1,5 +1,6 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const jwt = require('jsonwebtoken');
 
 // Sem PLATFORM_JWT_*_KEY no ambiente, lib/jwt-rs256 gera um par efêmero no
@@ -50,6 +51,15 @@ describe('jwt-rs256', () => {
     const token = jwtRs256.sign(CLAIMS);
     const adulterado = token.slice(0, -4) + 'AAAA';
     assert.throws(() => jwtRs256.verify(adulterado));
+  });
+
+  test('pemDeEnv: PEM cru passa direto; base64 do PEM é decodificado', () => {
+    const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const pem = privateKey.export({ type: 'pkcs8', format: 'pem' });
+    assert.equal(jwtRs256.pemDeEnv(pem), pem);
+    assert.equal(jwtRs256.pemDeEnv(Buffer.from(pem).toString('base64')), pem);
+    assert.equal(jwtRs256.pemDeEnv(''), '');
+    assert.equal(jwtRs256.pemDeEnv(undefined), undefined);
   });
 
   test('issuer diferente é rejeitado', () => {

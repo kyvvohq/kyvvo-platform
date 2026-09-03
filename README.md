@@ -49,7 +49,7 @@ npm test    # funções puras + crypto; só precisa de `jsonwebtoken`, sem DB
 |---|---|
 | `DATABASE_URL` | Postgres (schema `platform`) |
 | `DB_SEARCH_PATH` | default `platform, public` |
-| `PLATFORM_JWT_PRIVATE_KEY` / `PLATFORM_JWT_PUBLIC_KEY` | par RS256 em PEM (SSM em prod) |
+| `PLATFORM_JWT_PRIVATE_KEY` / `PLATFORM_JWT_PUBLIC_KEY` | par RS256 — PEM cru **ou** `base64 -w0` do PEM (em prod é base64, porque `env_file`/`gen-env-from-ssm.sh` não aceitam valor multi-linha) |
 | `PLATFORM_JWT_ISSUER` | default `https://auth.kyvvo.com.br` |
 | `PLATFORM_JWT_ACCESS_TTL` | default `15m` |
 | `RESEND_API_KEY` / `RESEND_FROM` | e-mail dos códigos de verificação (opcional; sem isso, modo log) |
@@ -61,6 +61,6 @@ npm test    # funções puras + crypto; só precisa de `jsonwebtoken`, sem DB
 
 Mesmo padrão dos outros apps Kyvvo: imagem `node:20-alpine` crua + bind mount
 + `command: npm install && node index.js`, sem build. `deploy.yml` faz scp pra
-`/opt/platform` + `gen-env-from-ssm.sh` + `docker compose up -d --force-recreate
+`/opt/kyvvo/platform` + `gen-env-from-ssm.sh` + `docker compose up -d --force-recreate
 platform`. Falta: DNS `auth.kyvvo.com.br`, bloco nginx, serviço no compose,
 params no SSM, secrets `EC2_*` + `NPM_PACKAGES_TOKEN` neste repo.
