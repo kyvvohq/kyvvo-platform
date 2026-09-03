@@ -1,26 +1,23 @@
 name: Deploy to EC2
 
-# DORMENTE nesta leva. Só `workflow_dispatch` — nenhum trigger de push — até o
-# serviço `platform` existir no docker-compose da EC2 (kyvvohq/kyvvo-infra) e
-# ter DNS/nginx/SSM prontos (ver o plano P3, leva de corte). Quando ativar:
-# descomentar o bloco `push:` abaixo, no mesmo formato de
-# kyvvo-people/.github/workflows/deploy.yml.
-#
-# Requer os secrets EC2_HOST, EC2_USER, EC2_SSH_KEY_B64 (mesma chave dos
-# outros repos) — ainda NÃO configurados neste repo.
+# Push em `main` que toca o código do serviço deploya sozinho (scp pra
+# /opt/kyvvo/platform + gen-env-from-ssm.sh + docker compose up -d
+# --force-recreate platform), no mesmo padrão de kyvvo/kyvvo-people. Secrets
+# EC2_HOST/EC2_USER/EC2_SSH_KEY_B64/NPM_PACKAGES_TOKEN já configurados.
 
 on:
-  # push:
-  #   branches: [main]
-  #   paths:
-  #     - ".npmrc"
-  #     - "index.js"
-  #     - "package.json"
-  #     - "package-lock.json"
-  #     - "lib/**"
-  #     - "routes/**"
-  #     - "db/**"
-  #     - "token-service.js"
+  push:
+    branches: [main]
+    paths:
+      - ".npmrc"
+      - "index.js"
+      - "package.json"
+      - "package-lock.json"
+      - "lib/**"
+      - "routes/**"
+      - "db/**"
+      - "token-service.js"
+      - "asaas-service.js"
   workflow_dispatch:
 
 jobs:
