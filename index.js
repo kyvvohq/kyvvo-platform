@@ -6,9 +6,11 @@ const { pool, migrar } = require('./lib/db');
 const tokenService = require('./token-service');
 const configSistema = require('./lib/configuracoes-sistema');
 const eventos = require('./lib/eventos');
+const planos = require('./lib/planos');
 const { registrarGuards } = require('./lib/auth-guards');
 const { registerAuthRoutes } = require('./routes/auth');
 const { registerEntitlementsRoutes } = require('./routes/entitlements');
+const { registerPagamentosRoutes } = require('./routes/pagamentos');
 const jwtRs256 = require('./lib/jwt-rs256');
 
 const PORT = process.env.PORT || 3003;
@@ -21,10 +23,12 @@ function build() {
   tokenService.init(pool);
   configSistema.init(pool);
   eventos.init(pool);
+  planos.init(pool);
 
   registrarGuards(fastify, pool);
   registerEntitlementsRoutes(fastify, pool);
   registerAuthRoutes(fastify, pool);
+  registerPagamentosRoutes(fastify, pool);
 
   return fastify;
 }
@@ -42,6 +46,10 @@ async function start() {
 
   await configSistema.carregar().catch((err) => {
     fastify.log.warn({ err }, 'não foi possível carregar configuracoes_sistema — usando defaults em memória');
+  });
+
+  await planos.carregar().catch((err) => {
+    fastify.log.warn({ err }, 'não foi possível carregar o catálogo de planos');
   });
 
   if (jwtRs256.efemera) {

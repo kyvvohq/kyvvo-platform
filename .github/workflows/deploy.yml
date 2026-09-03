@@ -51,7 +51,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ steps.sshkey.outputs.value }}
-          source: ".npmrc,index.js,package.json,package-lock.json,version.json,token-service.js,lib/**,routes/**,db/**"
+          source: ".npmrc,index.js,package.json,package-lock.json,version.json,token-service.js,asaas-service.js,lib/**,routes/**,db/**"
           target: "/opt/platform"
 
       - name: Regenerar env do SSM + recriar container

@@ -9,24 +9,24 @@ Fase **P3** do runbook de migração (`kyvvohq` · artifact "Kyvvo Migration
 Runbook"). Ordem: P0–P2 feitos (pacotes `@kyvvohq/*`, CI/CD, secrets no SSM,
 infra em `kyvvohq/kyvvo-infra`).
 
-## Estado atual — leva 1a (esqueleto + sessão)
+## Estado atual — leva 1 (esqueleto + sessão + billing), greenfield
 
-Greenfield. **Nada em produção usa isto ainda.** Nada em `kyvvo`/`kyvvo-people`
-mudou; nada deploya (o `deploy.yml` está dormente).
-
-Entregue:
+**Nada em produção usa isto ainda.** Nada em `kyvvo`/`kyvvo-people` mudou;
+nada deploya (o `deploy.yml` está dormente).
 
 | Área | O quê |
 |---|---|
-| Sessão | `POST /api/auth/{login,logout,esqueci-senha,redefinir-senha,verify-token,resend-token,refresh}`, `GET /api/auth/people/acesso` — portado verbatim de `kyvvo/server/panel/routes/auth.js` (menos EOL) |
+| Sessão | `POST /api/auth/{login,logout,esqueci-senha,redefinir-senha,register,verify-token,resend-token,refresh}`, `GET /api/auth/people/acesso` — portado verbatim de `kyvvo/server/panel/routes/auth.js` (menos EOL; `register` só troca `fastify.jwt.sign`→RS256) |
 | JWT | RS256 (`lib/jwt-rs256.js`): assina com chave privada, `GET /.well-known/jwks.json`, access TTL 15 min, `POST /api/auth/refresh` |
 | Guards | `authenticate` / `requireModulo` / `requireAdmin` — portados de `server/panel/index.js`, só a verificação do token virou RS256 local |
+| Billing | `GET /api/pagamentos[/status]`, `POST /api/pagamentos/cadastrar`, `PATCH /api/pagamentos/plano`, `DELETE /api/pagamentos/assinatura`, `POST /webhooks/asaas` — cópia byte-a-byte de `server/panel/routes/pagamentos.js` + `lib/{planos,pagamentos}.js` + `asaas-service.js` (= `@kyvvohq/asaas`) |
 | Entitlements | `GET /entitlements/:tenantId` (JWT do próprio tenant), `GET /plans?produto=studio\|people`, `GET /health` |
-| Schema | `db/001_schema.sql` — schema `platform` consolidado (tenants, usuarios, tokens_validacao, eventos_analytics, configuracoes_sistema, modulos, tenant_modulos, planos, plano_features, plano_limites), via `@kyvvohq/db-migrate` |
+| Schema | `db/001_schema.sql` (identidade/sessão) + `db/002_billing.sql` (colunas asaas_*/endereco_*/cpf_cnpj/segmento*/onboarding de `tenants`, `segmentos`, `consentimentos_cadastro`) — schema `platform`, via `@kyvvohq/db-migrate` |
 
-**Ainda não portado** (próxima leva): `POST /api/auth/register` (arrasta
-segmentos/consentimentos/onboarding) e `routes/pagamentos.js` +
-colunas de billing de `tenants` + `assinaturas`.
+Verificado contra Postgres real (PGlite): migrations aplicam limpo + idempotentes;
+toda query de `routes/*` e `lib/*` casa colunas; `register` + webhook + PATCH de
+plano rodam. `build().ready()` registra as 17 rotas sem conflito. 31 testes
+unitários (RS256/trial-conta/whatsapp) verdes sem DB.
 
 ## Rodar local
 
@@ -54,7 +54,7 @@ npm test    # funções puras + crypto; só precisa de `jsonwebtoken`, sem DB
 | `PLATFORM_JWT_ACCESS_TTL` | default `15m` |
 | `RESEND_API_KEY` / `RESEND_FROM` | e-mail dos códigos de verificação (opcional; sem isso, modo log) |
 | `META_WHATSAPP_TOKEN` / `META_PHONE_NUMBER_ID` | WhatsApp dos códigos (opcional) |
-| `ASAAS_*` | billing (próxima leva) |
+| `ASAAS_ENV` / `ASAAS_API_KEY_*` / `ASAAS_WEBHOOK_TOKEN` | billing (`@kyvvohq/asaas`); sem chave = modo log |
 | `PORT` | default `3003` |
 
 ## Deploy (quando ativar)

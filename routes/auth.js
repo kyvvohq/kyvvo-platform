@@ -1,25 +1,29 @@
-// Auth + recuperação de senha — portado de kyvvo/server/panel/routes/auth.js.
+// Auth + recuperação de senha + cadastro self-service — portado de
+// kyvvo/server/panel/routes/auth.js.
 //
 // Rotas idênticas em path e contrato (o front do Studio e o backend do People
 // não mudam de URL): POST /api/auth/{login,logout,esqueci-senha,
-// redefinir-senha,verify-token,resend-token}, GET /api/auth/people/acesso.
-// Novo aqui: POST /api/auth/refresh (o access token agora dura 15 min).
+// redefinir-senha,register,verify-token,resend-token}, GET
+// /api/auth/people/acesso. Novo aqui: POST /api/auth/refresh (o access token
+// agora dura 15 min).
 //
 // Diferença de comportamento vs. o original: o token é assinado em RS256
 // (lib/jwt-rs256.js) com TTL de 15 min, no lugar do HS256 `7d` do
 // @fastify/jwt. Claims idênticos: { userId, tenantId, email, tokenVersion }.
 //
-// FORA desta leva (entra quando o cadastro self-service for portado, junto de
-// segmentos/consentimentos_cadastro/onboarding): POST /api/auth/register.
-// O Studio segue servindo /api/auth/register pelo painel até lá.
-
 const bcrypt = require('bcryptjs');
 const tokenService = require('../token-service');
 const configSistema = require('../lib/configuracoes-sistema');
 const { EMAIL_REGEX, SENHA_REGEX } = require('../lib/validadores');
+const { normalizarWhatsapp } = require('../lib/whatsapp');
 const jwtRs256 = require('../lib/jwt-rs256');
 
 const REENVIO_COOLDOWN_SEGUNDOS = 60;
+
+// Módulos liberados automaticamente no trial (US77/CA09).
+const MODULOS_TRIAL = ['agenda_inteligente', 'financeiro', 'dashboards'];
+const TERMOS_VERSAO = '2026-07-22';
+const PRIVACIDADE_VERSAO = '2026-07-22';
 
 function assinarAcesso(usuario) {
   return jwtRs256.sign({
@@ -202,6 +206,171 @@ function registerAuthRoutes(fastify, pool) {
     );
 
     return { ok: true, message: 'Senha redefinida com sucesso. Faça login com a nova senha.' };
+  });
+
+  fastify.post('/api/auth/register', async (request, reply) => {
+    const {
+      nome_empresa: nomeEmpresa,
+      nome_responsavel: nomeResponsavel,
+      email,
+      senha,
+      segmento_id: segmentoIdBruto,
+      telefone: telefoneBruto,
+      whatsapp: whatsappBruto,
+      aceite_termos: aceiteTermosBruto,
+      aceita_marketing: aceitaMarketingBruto,
+      plano_slug: planoSlugBruto,
+    } = request.body || {};
+
+    const nomeEmpresaLimpo = (nomeEmpresa || '').trim();
+    const nomeLimpo = (nomeResponsavel || '').trim();
+    const emailLimpo = (email || '').toLowerCase().trim();
+
+    if (nomeEmpresaLimpo.length < 2) {
+      return reply.code(400).send({ error: 'Informe o nome da empresa.' });
+    }
+    if (nomeLimpo.length < 2) {
+      return reply.code(400).send({ error: 'Informe o nome do responsável.' });
+    }
+    if (!EMAIL_REGEX.test(emailLimpo)) {
+      return reply.code(400).send({ error: 'Digite um e-mail válido.' });
+    }
+    if (!SENHA_REGEX.test(senha || '')) {
+      return reply.code(400).send({
+        error: 'A senha deve ter no mínimo 8 caracteres, 1 número e 1 letra maiúscula.',
+      });
+    }
+    let segmentoId = null;
+    if (segmentoIdBruto !== undefined && segmentoIdBruto !== null && segmentoIdBruto !== '') {
+      segmentoId = parseInt(segmentoIdBruto, 10);
+      if (!Number.isInteger(segmentoId)) {
+        return reply.code(400).send({ error: 'Selecione um segmento válido.' });
+      }
+    }
+    const telefone = normalizarWhatsapp(telefoneBruto);
+    if (!telefone) {
+      return reply.code(400).send({ error: 'Digite um telefone válido com DDD.' });
+    }
+    const whatsapp = normalizarWhatsapp(whatsappBruto);
+    if (!whatsapp) {
+      return reply.code(400).send({ error: 'Digite um número de WhatsApp válido com DDD.' });
+    }
+    const aceiteTermos = aceiteTermosBruto === true;
+    if (!aceiteTermos) {
+      return reply.code(422).send({
+        error: 'Você precisa aceitar os Termos de Uso e a Política de Privacidade para criar a conta.',
+        erros: { aceite_termos: 'Aceite obrigatório.' },
+      });
+    }
+    const aceitaMarketing = aceitaMarketingBruto === true;
+
+    const { rows: emailRows } = await pool.query('SELECT 1 FROM usuarios WHERE email = $1', [emailLimpo]);
+    if (emailRows.length > 0) {
+      return reply.code(409).send({ error: 'Este e-mail já está cadastrado. Faça login ou use outro e-mail.' });
+    }
+    const { rows: whatsappRows } = await pool.query('SELECT 1 FROM tenants WHERE whatsapp = $1', [whatsapp]);
+    if (whatsappRows.length > 0) {
+      return reply.code(409).send({ error: 'Este número de WhatsApp já está associado a uma conta.' });
+    }
+    let segmentoSlug = null;
+    if (segmentoId !== null) {
+      const { rows: segmentoRows } = await pool.query(
+        'SELECT slug FROM segmentos WHERE id = $1 AND ativo = true',
+        [segmentoId]
+      );
+      if (!segmentoRows[0]) {
+        return reply.code(400).send({ error: 'Selecione um segmento válido.' });
+      }
+      segmentoSlug = segmentoRows[0].slug;
+    }
+    const onboardingPendente = segmentoId === null;
+
+    let planoChave = null;
+    let planoSlugResolvido = null;
+    const planoSlugLimpo = typeof planoSlugBruto === 'string' ? planoSlugBruto.trim() : '';
+    if (planoSlugLimpo) {
+      const { rows: planoRows } = await pool.query(
+        'SELECT chave, slug FROM planos WHERE slug = $1 OR chave = $1',
+        [planoSlugLimpo]
+      );
+      if (!planoRows[0]) {
+        return reply.code(422).send({ error: 'Plano selecionado inválido.' });
+      }
+      planoChave = planoRows[0].chave;
+      planoSlugResolvido = planoRows[0].slug;
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const trialExpira = new Date(Date.now() + configSistema.config.trialDias * 24 * 60 * 60 * 1000);
+      const { rows: tenantRows } = await client.query(
+        `INSERT INTO tenants (nome, telefone, whatsapp, segmento, segmento_id, plano, status, trial_expires_at, onboarding_pendente)
+         VALUES ($1, $2, $3, $4, $5, $6, 'trial', $7, $8)
+         RETURNING id`,
+        [nomeEmpresaLimpo, telefone, whatsapp, segmentoSlug, segmentoId, planoChave || 'trial', trialExpira.toISOString(), onboardingPendente]
+      );
+      const tenantId = tenantRows[0].id;
+
+      await client.query(
+        `INSERT INTO tenant_modulos (tenant_id, modulo_key, ativo)
+         SELECT $1, key, true FROM modulos WHERE key = ANY($2::text[])
+         ON CONFLICT (tenant_id, modulo_key) DO NOTHING`,
+        [tenantId, MODULOS_TRIAL]
+      );
+
+      const hash = await bcrypt.hash(senha, 10);
+      const { rows: usuarioRows } = await client.query(
+        `INSERT INTO usuarios (tenant_id, email, senha_hash, nome, email_verified)
+         VALUES ($1, $2, $3, $4, false)
+         RETURNING id, token_version`,
+        [tenantId, emailLimpo, hash, nomeLimpo]
+      );
+      const usuarioId = usuarioRows[0].id;
+
+      await client.query(
+        `INSERT INTO consentimentos_cadastro (tenant_id, termos_versao, privacidade_versao, aceita_marketing, ip)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [tenantId, TERMOS_VERSAO, PRIVACIDADE_VERSAO, aceitaMarketing, request.ip]
+      );
+
+      const codigo = await tokenService.criarToken(client, { userId: usuarioId, tipo: 'email_verificacao' });
+
+      await client.query('COMMIT');
+
+      tokenService.enviarPorCanais({ token: codigo, email: emailLimpo, whatsapp, nome: nomeLimpo });
+
+      const token = assinarAcesso({
+        userId: usuarioId,
+        tenantId,
+        email: emailLimpo,
+        tokenVersion: usuarioRows[0].token_version,
+      });
+
+      reply.code(201);
+      return {
+        token,
+        nome: nomeLimpo,
+        email: emailLimpo,
+        email_verified: false,
+        email_mascarado: tokenService.mascararEmail(emailLimpo),
+        plano_slug: planoSlugResolvido,
+        segmento: segmentoSlug,
+        onboarding_pendente: onboardingPendente,
+      };
+    } catch (erro) {
+      await client.query('ROLLBACK');
+      if (erro.code === '23505') {
+        const msg = /whatsapp/i.test(erro.constraint || '')
+          ? 'Este número de WhatsApp já está associado a uma conta.'
+          : 'Este e-mail já está cadastrado. Faça login ou use outro e-mail.';
+        return reply.code(409).send({ error: msg });
+      }
+      throw erro;
+    } finally {
+      client.release();
+    }
   });
 
   // Valida o token de 6 dígitos e ativa o e-mail. Autenticado: o usuário já
