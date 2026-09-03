@@ -48,7 +48,7 @@ npm test    # funções puras + crypto; só precisa de `jsonwebtoken`, sem DB
 | Var | Uso |
 |---|---|
 | `DATABASE_URL` | Postgres (schema `platform`) |
-| `DB_SEARCH_PATH` | default `platform, public` |
+| `DB_SEARCH_PATH` | default `platform,public` |
 | `PLATFORM_JWT_PRIVATE_KEY` / `PLATFORM_JWT_PUBLIC_KEY` | par RS256 — PEM cru **ou** `base64 -w0` do PEM (em prod é base64, porque `env_file`/`gen-env-from-ssm.sh` não aceitam valor multi-linha) |
 | `PLATFORM_JWT_ISSUER` | default `https://auth.kyvvo.com.br` |
 | `PLATFORM_JWT_ACCESS_TTL` | default `15m` |
