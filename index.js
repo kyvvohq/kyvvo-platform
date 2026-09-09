@@ -11,6 +11,7 @@ const { registrarGuards } = require('./lib/auth-guards');
 const { registerAuthRoutes } = require('./routes/auth');
 const { registerEntitlementsRoutes } = require('./routes/entitlements');
 const { registerPagamentosRoutes } = require('./routes/pagamentos');
+const { registerWebhookWhatsappRoutes } = require('./routes/webhook-whatsapp');
 const jwtRs256 = require('./lib/jwt-rs256');
 
 const PORT = process.env.PORT || 3003;
@@ -29,6 +30,7 @@ function build() {
   registerEntitlementsRoutes(fastify, pool);
   registerAuthRoutes(fastify, pool);
   registerPagamentosRoutes(fastify, pool);
+  registerWebhookWhatsappRoutes(fastify);
 
   return fastify;
 }
