@@ -283,12 +283,43 @@ relatórios de campanha reais, impersonar cliente, billing self-service pelo adm
 **Fase 1 FECHADA.** Próximo = Fase 2 (Produtos & Plataforma) — ver abaixo.
 
 ### Fase 2 — Produtos & Plataforma
-- Entitlements/`modulos` por tenant (portar telas do `admin-configuracoes`)
-- Planos: leitura + edição com **versionamento** (spec §12 — não alterar
-  contrato existente retroativamente)
-- Assinaturas / Billing: leitura
-- **Billing cutover do platform (Fase 2 / Step 5b do runbook P3)** entra aqui:
-  `/api/pagamentos/*` + `/webhooks/asaas` → `:3003`
+
+**2a — Produtos / entitlements (feito, PR #19):**
+- [x] `routes/admin/produtos.js` — `GET /admin/api/produtos` (catálogo de
+  módulos + nº de empresas ativas + resumo de planos por produto).
+- [x] `PATCH /admin/api/clientes/:id/modulos/:key` (`plano:alterar`) — toggle
+  de módulo com FOR UPDATE, bloqueio de obrigatório, 409 no-op, `AuditEvent`.
+- [x] SPA: `pages/produtos/Lista.tsx` (sai do `Placeholder`),
+  `pages/clientes/Entitlements.tsx` (toggle na 360°, desativar pede confirmação).
+
+**2b — Plataforma / Planos + Assinaturas (feito, PR #20):**
+- [x] `routes/admin/plataforma.js` (`billing:read`) — `GET /plataforma/planos`
+  (catálogo completo + features + limites), `/plataforma/assinaturas` (lista,
+  1 call Asaas por tenant com subscription), `/plataforma/assinaturas/:id`
+  (resumo ao vivo).
+- [x] SPA: `pages/plataforma/{Planos,Assinaturas}.tsx` + `PlataformaTabs`;
+  `BillingSecao.tsx` (a 360° lazy-carrega valor + próxima cobrança).
+- **Edição de plano com versionamento (spec §12) — ADIADA.** Mexer em
+  `plano_limites` hoje afeta retroativamente quem já está no plano (o
+  entitlements resolve ao vivo). Precisa de `plano_versoes` (snapshot por
+  versão) + o entitlements resolver contra a versão fixada no tenant. Modelagem
+  própria, fora do MVP.
+
+**2c — Billing cutover do platform (Step 5b do runbook P3) — BLOQUEADO / não é do admin.**
+Não é pré-requisito do portal (o admin lê billing via `montarResumoPagamentos`
+→ Asaas direto, independente de onde `/api/pagamentos/*` roda). Fica pendente
+por conta própria:
+- **Pré-requisito**: a limpeza do fallback HS256 em
+  `kyvvo-studio/server/panel/lib/resolver-sessao.js` (os tokens legados de 7d
+  precisam ter expirado — era ~2026-09-10; **ainda não feita**). O platform não
+  tem fallback HS256 → um admin com token legado tomaria 401 na Cobrança.
+- Depois: recriar o container `platform` (params Asaas já estão no SSM
+  `/kyvvo/platform/`), e no `studio.kyvvo.com.br` do nginx adicionar
+  `location ^~ /api/pagamentos/` e `location = /webhooks/asaas` → `:3003`
+  (antes do `location /` do painel). Mesmo padrão do bloco `^~ /api/auth/` que
+  já existe (`nginx/kyvvo.conf:138`). **Não precisa repontar o webhook na
+  Asaas** — a URL `studio.kyvvo.com.br/webhooks/asaas` continua, só muda pra
+  onde o nginx a manda. Rollback = tirar os dois `location`.
 
 ### Fase 3 — WhatsApp & Templates
 - `db/005` + `db/006`; `webhook-whatsapp.js` passa a **persistir** eventos/status
