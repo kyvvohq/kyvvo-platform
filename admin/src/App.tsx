@@ -13,6 +13,9 @@ import { Planos as PlataformaPlanos } from './pages/plataforma/Planos';
 import { Assinaturas as PlataformaAssinaturas } from './pages/plataforma/Assinaturas';
 import { Numeros as WhatsappNumeros } from './pages/whatsapp/Numeros';
 import { Eventos as WhatsappEventos } from './pages/whatsapp/Eventos';
+import { Templates as CampanhasTemplates } from './pages/campanhas/Templates';
+import { TemplateEditor } from './pages/campanhas/TemplateEditor';
+import { Disparos as CampanhasDisparos } from './pages/campanhas/Disparos';
 
 export function App() {
   const { admin, carregando } = useAuth();
@@ -89,8 +92,36 @@ export function App() {
           }
         />
         <Route
-          path="/campanhas/*"
-          element={<Placeholder area="Campanhas" perm="campanha:read" />}
+          path="/campanhas"
+          element={
+            <RequirePerm perm="template:read">
+              <CampanhasTemplates />
+            </RequirePerm>
+          }
+        />
+        <Route
+          path="/campanhas/disparos"
+          element={
+            <RequirePerm perm="campanha:read">
+              <CampanhasDisparos />
+            </RequirePerm>
+          }
+        />
+        <Route
+          path="/campanhas/novo"
+          element={
+            <RequirePerm perm="template:write">
+              <TemplateEditor />
+            </RequirePerm>
+          }
+        />
+        <Route
+          path="/campanhas/:id"
+          element={
+            <RequirePerm perm="template:read">
+              <TemplateEditor />
+            </RequirePerm>
+          }
         />
         <Route
           path="/plataforma"

@@ -248,6 +248,70 @@ code {
   word-break: break-word;
 }
 
+/* ---------- formulário (editor de template) ---------- */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3, 12px);
+}
+
+.painel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.painel label.bloco {
+  margin-top: var(--space-3, 12px);
+}
+
+.painel .bloco {
+  margin-top: var(--space-4, 16px);
+}
+
+.painel input,
+.painel select,
+.painel textarea {
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border: 1px solid var(--border, #e7eaf2);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--input-bg, #fff);
+  color: inherit;
+  font: inherit;
+}
+
+.painel input:focus,
+.painel select:focus,
+.painel textarea:focus {
+  outline: 2px solid var(--accent, #7c5cfc);
+  outline-offset: -1px;
+}
+
+.painel input:disabled,
+.painel select:disabled,
+.painel textarea:disabled {
+  opacity: 0.6;
+  background: var(--surface-muted, #f1f3f8);
+}
+
+.painel textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.var-linha {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.var-linha input {
+  flex: 1;
+  min-width: 0;
+}
+
 /* ---------- ações + modal ---------- */
 .acoes-linha {
   display: flex;

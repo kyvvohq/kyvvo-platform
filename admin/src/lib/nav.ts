@@ -13,7 +13,7 @@ export const NAV: NavItem[] = [
   { to: '/clientes', label: 'Clientes', perms: ['clientes:read'] },
   { to: '/produtos', label: 'Produtos', perms: ['clientes:read', 'plano:alterar'] },
   { to: '/whatsapp', label: 'WhatsApp', perms: ['whatsapp:read'] },
-  { to: '/campanhas', label: 'Campanhas', perms: ['campanha:read'] },
+  { to: '/campanhas', label: 'Campanhas', perms: ['campanha:read', 'template:read'] },
   { to: '/plataforma', label: 'Plataforma', perms: ['billing:read'] },
   { to: '/sistema', label: 'Sistema', perms: ['auditoria:read', 'flag:read', 'admin:manage'] },
 ];
