@@ -5,3 +5,6 @@ node_modules/
 .env
 env/
 *.pem
+
+# SPA do portal admin — build gerado no deploy (ver admin/README.md)
+admin/dist/

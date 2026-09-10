@@ -1,6 +1,9 @@
 require('dotenv').config();
 
+const fs = require('fs');
+const path = require('path');
 const Fastify = require('fastify');
+const fastifyStatic = require('@fastify/static');
 
 const { pool, migrar } = require('./lib/db');
 const tokenService = require('./token-service');
@@ -8,10 +11,12 @@ const configSistema = require('./lib/configuracoes-sistema');
 const eventos = require('./lib/eventos');
 const planos = require('./lib/planos');
 const { registrarGuards } = require('./lib/auth-guards');
+const { registrarGuardsAdmin } = require('./lib/admin-rbac');
 const { registerAuthRoutes } = require('./routes/auth');
 const { registerEntitlementsRoutes } = require('./routes/entitlements');
 const { registerPagamentosRoutes } = require('./routes/pagamentos');
 const { registerWebhookWhatsappRoutes } = require('./routes/webhook-whatsapp');
+const { registerAdminAuthRoutes } = require('./routes/admin/auth');
 const jwtRs256 = require('./lib/jwt-rs256');
 
 const PORT = process.env.PORT || 3003;
@@ -27,10 +32,36 @@ function build() {
   planos.init(pool);
 
   registrarGuards(fastify, pool);
+  registrarGuardsAdmin(fastify, pool);
   registerEntitlementsRoutes(fastify, pool);
   registerAuthRoutes(fastify, pool);
   registerPagamentosRoutes(fastify, pool);
   registerWebhookWhatsappRoutes(fastify);
+  registerAdminAuthRoutes(fastify, pool);
+
+  // Portal admin (SPA Vite/React) servido estático em /admin. O build vai pra
+  // admin/dist no deploy (não versionado; ver admin/README.md). Enquanto o
+  // build não existe — CI, dev sem build — nada disto sobe e o serviço segue
+  // sendo só a API.
+  const adminDist = path.join(__dirname, 'admin', 'dist');
+  if (fs.existsSync(path.join(adminDist, 'index.html'))) {
+    fastify.register(fastifyStatic, { root: adminDist, prefix: '/admin/', wildcard: false });
+
+    fastify.setNotFoundHandler((request, reply) => {
+      // Fallback de SPA: GET em /admin/* que não seja arquivo real nem
+      // /admin/api/* devolve o index.html pro roteamento client-side.
+      if (
+        request.method === 'GET' &&
+        request.url.startsWith('/admin') &&
+        !request.url.startsWith('/admin/api')
+      ) {
+        return reply.type('text/html').sendFile('index.html', adminDist);
+      }
+      return reply
+        .code(404)
+        .send({ message: `Route ${request.method}:${request.url} not found`, error: 'Not Found', statusCode: 404 });
+    });
+  }
 
   return fastify;
 }

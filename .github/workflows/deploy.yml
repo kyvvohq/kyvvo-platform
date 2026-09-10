@@ -16,6 +16,7 @@ on:
       - "lib/**"
       - "routes/**"
       - "db/**"
+      - "scripts/**"
       - "token-service.js"
       - "asaas-service.js"
   workflow_dispatch:
@@ -48,7 +49,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ steps.sshkey.outputs.value }}
-          source: ".npmrc,index.js,package.json,package-lock.json,version.json,token-service.js,asaas-service.js,lib/**,routes/**,db/**"
+          source: ".npmrc,index.js,package.json,package-lock.json,version.json,token-service.js,asaas-service.js,lib/**,routes/**,db/**,scripts/**"
           target: "/opt/kyvvo/platform"
 
       - name: Regenerar env do SSM + recriar container
