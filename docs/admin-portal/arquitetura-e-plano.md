@@ -350,11 +350,31 @@ validar antes o escopo de Tech Provider do token); submissão real de template
 
 ### Fase 4 — Visão geral + Sistema + polish
 
-### Fase 4 — Visão geral + Sistema + polish
-- KPIs clicáveis na home
-- Feature Flags (UI) + Auditoria (viewer) + Campanhas (shell/mock)
-- Revisão de `loading`/`empty`/`error` em todas as telas
-- Testes das áreas críticas; README de execução e extensão (spec §21)
+- [x] **Visão geral** (PR #23) — `routes/admin/visao-geral.js`
+  (`GET /admin/api/visao-geral`, só `authenticateAdmin`): KPIs de clientes /
+  produtos / whatsapp + lista de alertas (inadimplentes, falhas WA 24h,
+  templates rejeitados, trial expirado). `Overview.tsx`: KPIs clicáveis pro
+  filtro. IA fica pra quando vier pelo adapter.
+- [x] **Sistema › Auditoria + Feature Flags** (PR #24) —
+  `routes/admin/sistema.js`: `GET /sistema/auditoria` (`auditoria:read`,
+  filtros + paginação), `GET/PUT/DELETE /sistema/flags` (`flag:read`/`write`,
+  escopo global/produto/tenant, toda escrita audita). SPA `SistemaTabs` +
+  `pages/sistema/{Auditoria,Flags}.tsx`. `Placeholder.tsx` removido — as 7
+  áreas têm tela real.
+- [x] **Sistema › Admins & Papéis** (PR #25) —
+  `routes/admin/sistema-admins.js` (`admin:manage`): `GET /sistema/admins`,
+  `GET /sistema/papeis`, `POST`/`PATCH` de admin (bcrypt, papéis; travas
+  anti-lockout: não desativa a si mesmo, não remove o último superadmin
+  ativo). SPA `pages/sistema/Admins.tsx`.
+- [ ] Polish: revisão fina de `loading`/`empty`/`error` (a base — `Estado` +
+  `EmptyState` — já está em todas as telas); estender `admin/README.md` com
+  "áreas e pontos de extensão" (spec §21).
+
+**Testes**: `test/*.test.js` cobre as funções puras (jwt-rs256, admin-session,
+auditoria, trial-conta, templates, webhook-whatsapp) — 58 casos. Migrações
+001..006 validadas no PGlite a cada PR. As rotas HTTP são exercitadas ao vivo
+em prod após cada deploy (o repo não tem harness de integração — os testes
+Playwright do Studio não se aplicam aqui).
 
 ### Fase 5 — Cutover
 - Parity check vs admin atual do Studio
