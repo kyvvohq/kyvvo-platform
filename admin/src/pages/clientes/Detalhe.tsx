@@ -165,10 +165,36 @@ export function Detalhe() {
               </Secao>
 
               <Secao titulo="Produtos">
-                <p className="muted nota">
-                  Painéis por produto (agenda, vagas, leads…) chegam na Fase 2, via adapter de cada
-                  produto.
-                </p>
+                {c.produtos.length === 0 ? (
+                  <p className="muted nota">
+                    Nenhum painel de produto disponível para esta empresa.
+                  </p>
+                ) : (
+                  c.produtos.map((p) => (
+                    <div key={p.produto} className="produto-painel">
+                      <h3>{p.rotulo || p.produto}</h3>
+                      {p._erro ? (
+                        <p className="muted nota">Painel indisponível ({p._erro}).</p>
+                      ) : (
+                        <>
+                          <div className="metricas">
+                            {p.metricas?.map((m) => (
+                              <div key={m.chave} className="metrica">
+                                <span className="metrica-valor">{m.valor ?? '—'}</span>
+                                <span className="metrica-rotulo muted">{m.rotulo}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {p.ultima_atividade && (
+                            <p className="muted nota">
+                              Última atividade: {dataHora(p.ultima_atividade)}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ))
+                )}
               </Secao>
             </div>
           </>

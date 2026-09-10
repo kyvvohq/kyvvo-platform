@@ -5,6 +5,7 @@
 
 const planos = require('../../lib/planos');
 const { calcularTrialTenant, statusContaTenant } = require('../../lib/trial-conta');
+const { buscarPaineisProduto } = require('../../lib/product-adapters');
 
 // Colunas ordenáveis — mapa explícito, nunca interpolar order_by cru.
 const ORDER_COLUMNS = {
@@ -168,29 +169,33 @@ function registerAdminClientesRoutes(fastify, pool) {
       return reply.code(404).send({ error: 'Empresa não encontrada' });
     }
 
-    const [{ rows: usuarios }, { rows: modulos }, limitesRes, { rows: atividade }] = await Promise.all([
-      pool.query(
-        `SELECT id, nome, email, role, email_verified, ativo, criado_em
-           FROM usuarios WHERE tenant_id = $1 ORDER BY criado_em ASC`,
-        [id],
-      ),
-      pool.query(
-        `SELECT m.key, m.nome, m.obrigatorio, COALESCE(tm.ativo, false) AS ativo
-           FROM modulos m
-           LEFT JOIN tenant_modulos tm ON tm.tenant_id = $1 AND tm.modulo_key = m.key
-          ORDER BY m.nome`,
-        [id],
-      ),
-      tenant.plano
-        ? pool.query('SELECT chave, valor, unidade FROM plano_limites WHERE plano_chave = $1', [
-            tenant.plano,
-          ])
-        : Promise.resolve({ rows: [] }),
-      pool.query(
-        'SELECT tipo, criado_em FROM eventos_analytics WHERE tenant_id = $1 ORDER BY criado_em DESC LIMIT 20',
-        [id],
-      ),
-    ]);
+    const [{ rows: usuarios }, { rows: modulos }, limitesRes, { rows: atividade }, produtos] =
+      await Promise.all([
+        pool.query(
+          `SELECT id, nome, email, role, email_verified, ativo, criado_em
+             FROM usuarios WHERE tenant_id = $1 ORDER BY criado_em ASC`,
+          [id],
+        ),
+        pool.query(
+          `SELECT m.key, m.nome, m.obrigatorio, COALESCE(tm.ativo, false) AS ativo
+             FROM modulos m
+             LEFT JOIN tenant_modulos tm ON tm.tenant_id = $1 AND tm.modulo_key = m.key
+            ORDER BY m.nome`,
+          [id],
+        ),
+        tenant.plano
+          ? pool.query('SELECT chave, valor, unidade FROM plano_limites WHERE plano_chave = $1', [
+              tenant.plano,
+            ])
+          : Promise.resolve({ rows: [] }),
+        pool.query(
+          'SELECT tipo, criado_em FROM eventos_analytics WHERE tenant_id = $1 ORDER BY criado_em DESC LIMIT 20',
+          [id],
+        ),
+        // Painéis de produto via adapter (spec §16) — degrada sozinho se um
+        // adapter estiver fora ou o token não estiver configurado.
+        buscarPaineisProduto(id),
+      ]);
 
     const trial = calcularTrialTenant(tenant);
     return {
@@ -232,7 +237,7 @@ function registerAdminClientesRoutes(fastify, pool) {
       },
       usuarios,
       atividade,
-      produtos: [], // Fase 2 — via adapter de produto
+      produtos,
     };
   });
 }

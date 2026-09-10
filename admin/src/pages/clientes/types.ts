@@ -86,5 +86,14 @@ export interface Cliente360 {
   };
   usuarios: UsuarioTenant[];
   atividade: { tipo: string; criado_em: string }[];
-  produtos: unknown[];
+  produtos: PainelProduto[];
+}
+
+export interface PainelProduto {
+  produto: string;
+  rotulo?: string;
+  metricas?: { chave: string; rotulo: string; valor: number | string | null }[];
+  ultima_atividade?: string | null;
+  /** presente quando o adapter falhou (timeout / fora do ar / sem token) */
+  _erro?: string;
 }
