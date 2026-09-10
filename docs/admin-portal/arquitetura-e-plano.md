@@ -269,11 +269,18 @@ relatórios de campanha reais, impersonar cliente, billing self-service pelo adm
 - [ ] **Passo CloudShell do Bruno**: `ADMIN_ADAPTER_TOKEN` no SSM (×2) +
   recriar `studio` e `platform`. Até lá `produtos: []` (seção mostra vazio).
 
-**1b — resto (próximos PRs):**
-- [ ] Usuários: busca global + organizações do usuário
-- [ ] Busca global v1 (real): empresas/usuários/telefones/PNID
-- [ ] Ações sensíveis (suspender/reativar/alterar plano) → confirmação +
-  `AuditEvent` (`lib/auditoria.js`)
+**1b — resto (feito):**
+- [x] Usuários busca global (PR #17) — `GET /admin/api/usuarios`,
+  `pages/usuarios/Lista.tsx` + `ClientesTabs` (Empresas | Usuários).
+- [x] Busca global v1 (PR #17) — `GET /admin/api/search?q=` federada
+  (empresas/usuários/telefones-PNID); `GlobalSearch.tsx` com dropdown real.
+- [x] Ações sensíveis (PR #18) — `lib/auditoria.js`
+  (`registrarAuditoria` na mesma transação), `POST /clientes/:id/{suspender,
+  reativar}` (`clientes:suspend`), `PATCH /clientes/:id/plano`
+  (`plano:alterar`). SPA: `Acoes.tsx` + `ConfirmModal.tsx` na 360°, botões só
+  pra quem tem a permissão. Viewer da auditoria fica pra Fase 4.
+
+**Fase 1 FECHADA.** Próximo = Fase 2 (Produtos & Plataforma) — ver abaixo.
 
 ### Fase 2 — Produtos & Plataforma
 - Entitlements/`modulos` por tenant (portar telas do `admin-configuracoes`)
