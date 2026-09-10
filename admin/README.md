@@ -41,8 +41,31 @@ rota `/admin` — o serviço segue sendo só a API.
   logout + redirect ao falhar.
 - `src/lib/auth.tsx` — `AuthProvider` / `useAuth` (`admin`, `entrar`, `sair`,
   `pode(...perms)`).
+- `src/lib/useFetch.ts` — GET declarativo (`{dados, carregando, erro,
+  recarregar}`); `src/lib/format.ts`, `src/lib/template.ts`.
 - `src/lib/nav.ts` — navegação de 1º nível + permissão exigida por item.
-- `src/components/` — `Shell` (Sidebar + Topbar), `GlobalSearch` (stub),
-  `EmptyState`.
-- `src/pages/` — `Login`, `Overview` (KPIs placeholder), `Placeholder` (telas
-  das áreas do MVP até cada fase chegar).
+- `src/components/` — `Shell` (Sidebar + Topbar), `GlobalSearch`, `Estado`
+  (loading/erro), `EmptyState`, `StatusBadge`, `ConfirmModal`, `RequirePerm`,
+  `*Tabs` (sub-abas por módulo).
+- `src/pages/` — `Login`, `Overview`, e uma pasta por área:
+  `clientes/` (lista + 360° + ações + entitlements + billing),
+  `usuarios/`, `produtos/`, `plataforma/` (planos + assinaturas),
+  `whatsapp/` (números + eventos), `campanhas/` (templates + editor),
+  `sistema/` (auditoria + flags + admins).
+
+## Pontos de extensão
+
+- **Nova área no menu**: item em `src/lib/nav.ts` (com `perms`) → rota em
+  `src/App.tsx` (envolta em `<RequirePerm>`) → `src/pages/<area>/`.
+- **Novo endpoint admin**: `../routes/admin/<x>.js` exportando
+  `register…Routes(fastify, pool)`, gateado por
+  `[fastify.authenticateAdmin, fastify.requirePermission('<perm>')]`, e
+  registrado em `../index.js`. Escrita sensível → transação + `registrarAuditoria`.
+- **Nova permissão/papel**: migration nova em `../db/` alterando
+  `admin_permissions` / `admin_role_permissions` (o catálogo é seed, não é
+  editável pela UI).
+- **Painel de produto na 360°**: cada produto expõe
+  `GET /admin-adapter/tenants/:id` (ver `kyvvo-studio`); `lib/product-adapters.js`
+  no platform faz o fan-out. Adicionar um produto = uma linha na lista `ADAPTERS`.
+- **Design System**: só via `/ds/*` (o platform serve
+  `@kyvvohq/design-system`); a SPA não importa o pacote.

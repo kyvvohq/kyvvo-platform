@@ -312,6 +312,34 @@ code {
   min-width: 0;
 }
 
+.chip-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full, 999px);
+  border: 1px solid var(--border, #e7eaf2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.chip-check input {
+  margin: 0;
+}
+
+.toggle-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.toggle-linha input {
+  margin: 0;
+}
+
 /* ---------- ações + modal ---------- */
 .acoes-linha {
   display: flex;
