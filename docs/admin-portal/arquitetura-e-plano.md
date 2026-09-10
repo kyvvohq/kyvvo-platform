@@ -244,12 +244,26 @@ relatórios de campanha reais, impersonar cliente, billing self-service pelo adm
   browser — login com o `admin@kyvvo.com.br` já criado.
 
 ### Fase 1 — Clientes 360°
-- Empresas: lista + filtros (produto, plano, status, WhatsApp, data)
-- Detalhe 360° (dados platform) + **contrato do product adapter** +
-  implementação no `kyvvo-studio` (`/admin-adapter/tenants/:id`)
-- Usuários: busca global + organizações do usuário
-- Busca global v1 (real): empresas/usuários/telefones/PNID
-- Ações sensíveis (suspender/reativar/alterar plano) → confirmação + `AuditEvent`
+
+**1a — Empresas + 360° (dados platform) (feito, PR `feat/admin-fase1-clientes`):**
+- [x] `routes/admin/clientes.js` — `GET /admin/api/clientes` (busca +
+  filtros status/plano/módulo/whatsapp + paginação; status derivado filtrado
+  em memória), `/clientes/resumo` (KPIs), `/clientes/filtros` (catálogo),
+  `/clientes/:id` (360°: identidade, plano+entitlements, billing, usuários,
+  atividade; `produtos: []` até o adapter). Todas gateadas por
+  `requirePermission('clientes:read')`.
+- [x] SPA: `pages/clientes/Lista.tsx` (tabela + filtros na URL + paginação),
+  `Detalhe.tsx` (360° em seções). `useFetch` (loading/erro), `Estado`,
+  `StatusBadge`, `RequirePerm`, `lib/format.ts`.
+
+**1b — resto da fase (próximos PRs):**
+- [ ] **Contrato do product adapter** (`/admin-adapter/tenants/:id`) +
+  implementação no `kyvvo-studio` + BFF fan-out → painel de produto no 360°.
+  Precisa do `ADMIN_ADAPTER_TOKEN` (passo CloudShell do Bruno).
+- [ ] Usuários: busca global + organizações do usuário
+- [ ] Busca global v1 (real): empresas/usuários/telefones/PNID
+- [ ] Ações sensíveis (suspender/reativar/alterar plano) → confirmação +
+  `AuditEvent` (`lib/auditoria.js`)
 
 ### Fase 2 — Produtos & Plataforma
 - Entitlements/`modulos` por tenant (portar telas do `admin-configuracoes`)
