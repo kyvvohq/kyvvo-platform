@@ -8,6 +8,7 @@ import { Placeholder } from './pages/Placeholder';
 import { Lista as ClientesLista } from './pages/clientes/Lista';
 import { Detalhe as ClienteDetalhe } from './pages/clientes/Detalhe';
 import { UsuariosLista } from './pages/usuarios/Lista';
+import { ProdutosLista } from './pages/produtos/Lista';
 
 export function App() {
   const { admin, carregando } = useAuth();
@@ -60,8 +61,12 @@ export function App() {
         />
 
         <Route
-          path="/produtos/*"
-          element={<Placeholder area="Produtos" perm="clientes:read" />}
+          path="/produtos"
+          element={
+            <RequirePerm perm="clientes:read">
+              <ProdutosLista />
+            </RequirePerm>
+          }
         />
         <Route
           path="/whatsapp/*"

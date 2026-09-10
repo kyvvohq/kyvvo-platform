@@ -5,6 +5,7 @@ import { Estado } from '../../components/Estado';
 import { StatusBadge } from '../../components/StatusBadge';
 import { data, dataHora, telefone } from '../../lib/format';
 import { Acoes } from './Acoes';
+import { Entitlements } from './Entitlements';
 import type { Cliente360 } from './types';
 
 function Campo({ rotulo, valor }: { rotulo: string; valor: ReactNode }) {
@@ -81,28 +82,7 @@ export function Detalhe() {
                   {c.cancelado_em && <Campo rotulo="Cancelada em" valor={data(c.cancelado_em)} />}
                 </div>
 
-                <div className="chips">
-                  {c.entitlements.modulos.map((m) => (
-                    <span key={m.key} className={`chip ${m.ativo ? 'chip-on' : 'chip-off'}`}>
-                      {m.nome}
-                      {m.obrigatorio ? ' *' : ''}
-                    </span>
-                  ))}
-                </div>
-
-                {Object.keys(c.entitlements.limites).length > 0 && (
-                  <ul className="limites">
-                    {Object.entries(c.entitlements.limites).map(([k, v]) => (
-                      <li key={k}>
-                        <span className="muted">{k}</span>
-                        <strong>
-                          {v.valor ?? '—'}
-                          {v.unidade ? ` ${v.unidade}` : ''}
-                        </strong>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <Entitlements cliente={c} onMudou={recarregar} />
               </Secao>
 
               <Secao titulo="Billing">
