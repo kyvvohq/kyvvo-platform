@@ -129,6 +129,7 @@ input {
 .busca-global {
   flex: 1;
   max-width: 460px;
+  position: relative;
 }
 
 .busca-global input {
@@ -143,6 +144,84 @@ input {
 .busca-global input:focus {
   outline: 2px solid var(--accent, #7c5cfc);
   outline-offset: -1px;
+}
+
+.busca-resultados {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #e7eaf2);
+  border-radius: var(--radius-md, 12px);
+  box-shadow: 0 8px 24px rgba(var(--shadow-rgb, 15, 17, 26), 0.12);
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.busca-resultados button {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border: 0;
+  border-radius: var(--radius-sm, 8px);
+  background: transparent;
+  text-align: left;
+  color: inherit;
+}
+
+.busca-resultados button:hover {
+  background: var(--surface-hover, #eceff6);
+}
+
+.busca-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.busca-sub {
+  font-size: 11px;
+}
+
+.busca-vazio {
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  font-size: 13px;
+}
+
+/* ---------- sub-abas ---------- */
+.subtabs {
+  display: flex;
+  gap: var(--space-1, 4px);
+  border-bottom: 1px solid var(--border, #e7eaf2);
+}
+
+.subtab {
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted, #6b7385);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.subtab:hover {
+  color: var(--text, #0f111a);
+}
+
+.subtab.ativo {
+  color: var(--accent, #7c5cfc);
+  border-bottom-color: var(--accent, #7c5cfc);
+}
+
+.resumo-linha {
+  margin: 0;
+  font-size: 12px;
 }
 
 .topbar-conta {

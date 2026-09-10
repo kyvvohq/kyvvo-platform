@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useFetch } from '../../lib/useFetch';
 import { Estado } from '../../components/Estado';
 import { EmptyState } from '../../components/EmptyState';
+import { ClientesTabs } from '../../components/ClientesTabs';
 import { StatusBadge } from '../../components/StatusBadge';
 import { data, telefone } from '../../lib/format';
 import type { ClientesResposta, FiltrosCatalogo, ResumoClientes } from './types';
@@ -59,14 +60,16 @@ export function Lista() {
   return (
     <div className="pagina">
       <header className="pagina-header">
-        <h1>Empresas</h1>
-        {resumo && (
-          <p className="muted">
-            {resumo.total} no total · {resumo.ativos} ativas · {resumo.trial} em trial ·{' '}
-            {resumo.inativos} inativas · {resumo.novos_mes} novas no mês
-          </p>
-        )}
+        <h1>Clientes</h1>
       </header>
+      <ClientesTabs />
+
+      {resumo && (
+        <p className="muted resumo-linha">
+          {resumo.total} empresas · {resumo.ativos} ativas · {resumo.trial} em trial ·{' '}
+          {resumo.inativos} inativas · {resumo.novos_mes} novas no mês
+        </p>
+      )}
 
       <div className="filtros">
         <input

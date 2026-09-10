@@ -18,6 +18,8 @@ const { registerPagamentosRoutes } = require('./routes/pagamentos');
 const { registerWebhookWhatsappRoutes } = require('./routes/webhook-whatsapp');
 const { registerAdminAuthRoutes } = require('./routes/admin/auth');
 const { registerAdminClientesRoutes } = require('./routes/admin/clientes');
+const { registerAdminUsuariosRoutes } = require('./routes/admin/usuarios');
+const { registerAdminSearchRoutes } = require('./routes/admin/search');
 const jwtRs256 = require('./lib/jwt-rs256');
 
 const PORT = process.env.PORT || 3003;
@@ -40,6 +42,8 @@ function build() {
   registerWebhookWhatsappRoutes(fastify);
   registerAdminAuthRoutes(fastify, pool);
   registerAdminClientesRoutes(fastify, pool);
+  registerAdminUsuariosRoutes(fastify, pool);
+  registerAdminSearchRoutes(fastify, pool);
 
   // Estáticos: /ds/ (Design System, mesmo padrão do Studio) e /admin/ (a SPA
   // buildada). @fastify/static só decora reply.sendFile uma vez — as demais
