@@ -6,6 +6,7 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { data, dataHora, telefone } from '../../lib/format';
 import { Acoes } from './Acoes';
 import { Entitlements } from './Entitlements';
+import { BillingSecao } from './BillingSecao';
 import type { Cliente360 } from './types';
 
 function Campo({ rotulo, valor }: { rotulo: string; valor: ReactNode }) {
@@ -85,23 +86,7 @@ export function Detalhe() {
                 <Entitlements cliente={c} onMudou={recarregar} />
               </Secao>
 
-              <Secao titulo="Billing">
-                <div className="campos">
-                  <Campo rotulo="Meio de pagamento" valor={c.billing.meio_pagamento} />
-                  <Campo
-                    rotulo="Cartão"
-                    valor={c.billing.cartao_final ? `final ${c.billing.cartao_final}` : '—'}
-                  />
-                  <Campo rotulo="Asaas customer" valor={c.billing.asaas_customer_id} />
-                  <Campo rotulo="Asaas subscription" valor={c.billing.asaas_subscription_id} />
-                  {c.status_alterado_em && (
-                    <Campo rotulo="Status alterado em" valor={dataHora(c.status_alterado_em)} />
-                  )}
-                </div>
-                <p className="muted nota">
-                  Cobranças, faturas e histórico de pagamento entram na Fase 2 (Plataforma).
-                </p>
-              </Secao>
+              <BillingSecao cliente={c} />
 
               <Secao titulo={`Usuários (${c.usuarios.length})`}>
                 <div className="tabela-wrap">
