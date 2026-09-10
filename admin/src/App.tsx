@@ -7,6 +7,7 @@ import { Overview } from './pages/Overview';
 import { Placeholder } from './pages/Placeholder';
 import { Lista as ClientesLista } from './pages/clientes/Lista';
 import { Detalhe as ClienteDetalhe } from './pages/clientes/Detalhe';
+import { UsuariosLista } from './pages/usuarios/Lista';
 
 export function App() {
   const { admin, carregando } = useAuth();
@@ -38,6 +39,14 @@ export function App() {
           element={
             <RequirePerm perm="clientes:read">
               <ClientesLista />
+            </RequirePerm>
+          }
+        />
+        <Route
+          path="/clientes/usuarios"
+          element={
+            <RequirePerm perm="clientes:read">
+              <UsuariosLista />
             </RequirePerm>
           }
         />
