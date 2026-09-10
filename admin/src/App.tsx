@@ -4,7 +4,6 @@ import { Shell } from './components/Shell';
 import { RequirePerm } from './components/RequirePerm';
 import { Login } from './pages/Login';
 import { Overview } from './pages/Overview';
-import { Placeholder } from './pages/Placeholder';
 import { Lista as ClientesLista } from './pages/clientes/Lista';
 import { Detalhe as ClienteDetalhe } from './pages/clientes/Detalhe';
 import { UsuariosLista } from './pages/usuarios/Lista';
@@ -16,6 +15,8 @@ import { Eventos as WhatsappEventos } from './pages/whatsapp/Eventos';
 import { Templates as CampanhasTemplates } from './pages/campanhas/Templates';
 import { TemplateEditor } from './pages/campanhas/TemplateEditor';
 import { Disparos as CampanhasDisparos } from './pages/campanhas/Disparos';
+import { Auditoria as SistemaAuditoria } from './pages/sistema/Auditoria';
+import { Flags as SistemaFlags } from './pages/sistema/Flags';
 
 export function App() {
   const { admin, carregando } = useAuth();
@@ -140,8 +141,20 @@ export function App() {
           }
         />
         <Route
-          path="/sistema/*"
-          element={<Placeholder area="Sistema" perm="auditoria:read" />}
+          path="/sistema"
+          element={
+            <RequirePerm perm="auditoria:read">
+              <SistemaAuditoria />
+            </RequirePerm>
+          }
+        />
+        <Route
+          path="/sistema/flags"
+          element={
+            <RequirePerm perm="flag:read">
+              <SistemaFlags />
+            </RequirePerm>
+          }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
