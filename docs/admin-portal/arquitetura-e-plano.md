@@ -256,10 +256,20 @@ relatórios de campanha reais, impersonar cliente, billing self-service pelo adm
   `Detalhe.tsx` (360° em seções). `useFetch` (loading/erro), `Estado`,
   `StatusBadge`, `RequirePerm`, `lib/format.ts`.
 
-**1b — resto da fase (próximos PRs):**
-- [ ] **Contrato do product adapter** (`/admin-adapter/tenants/:id`) +
-  implementação no `kyvvo-studio` + BFF fan-out → painel de produto no 360°.
-  Precisa do `ADMIN_ADAPTER_TOKEN` (passo CloudShell do Bruno).
+**1b — product adapter (feito; PRs `kyvvo-studio#21` + `kyvvo-platform#16`):**
+- [x] **Contrato**: `GET /admin-adapter/tenants/:id` → envelope
+  `{ produto, rotulo, metricas: [{chave,rotulo,valor}], ultima_atividade }`.
+  Auth server-to-server por `ADMIN_ADAPTER_TOKEN` (SSM `/kyvvo/studio/` +
+  `/kyvvo/platform/`), **não** o JWT de admin.
+- [x] `kyvvo-studio`: `server/panel/routes/admin-adapter.js` — contagens de
+  serviços/profissionais/clientes/agendamentos. Sem token → 503.
+- [x] `kyvvo-platform`: `lib/product-adapters.js` (`buscarPaineisProduto`,
+  fan-out paralelo, timeout 5s, `{produto,_erro}` em falha, `[]` sem token) →
+  `GET /admin/api/clientes/:id.produtos`. SPA renderiza a seção.
+- [ ] **Passo CloudShell do Bruno**: `ADMIN_ADAPTER_TOKEN` no SSM (×2) +
+  recriar `studio` e `platform`. Até lá `produtos: []` (seção mostra vazio).
+
+**1b — resto (próximos PRs):**
 - [ ] Usuários: busca global + organizações do usuário
 - [ ] Busca global v1 (real): empresas/usuários/telefones/PNID
 - [ ] Ações sensíveis (suspender/reativar/alterar plano) → confirmação +
