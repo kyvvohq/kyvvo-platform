@@ -1,6 +1,10 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { decidirDestino, extrairPhoneNumberId } = require('../routes/webhook-whatsapp');
+const {
+  decidirDestino,
+  extrairPhoneNumberId,
+  classificarEvento,
+} = require('../routes/webhook-whatsapp');
 
 const ENV_PADRAO = {
   PEOPLE_PHONE_NUMBER_ID: '111222333',
@@ -39,4 +43,22 @@ test('extrairPhoneNumberId: evento sem mensagem (ex.: status de entrega) não la
   assert.equal(extrairPhoneNumberId({ entry: [{ changes: [{ value: {} }] }] }), undefined);
   assert.equal(extrairPhoneNumberId({}), undefined);
   assert.equal(extrairPhoneNumberId(null), undefined);
+});
+
+const evt = (value) => ({ entry: [{ changes: [{ value }] }] });
+
+test('classificarEvento: payload com messages[] -> mensagem', () => {
+  const { tipo } = classificarEvento(evt({ messages: [{ id: 'wamid.1' }] }));
+  assert.equal(tipo, 'mensagem');
+});
+
+test('classificarEvento: payload com statuses[] -> status (+ expõe o value)', () => {
+  const { tipo, value } = classificarEvento(evt({ statuses: [{ id: 'wamid.1', status: 'delivered' }] }));
+  assert.equal(tipo, 'status');
+  assert.equal(value.statuses[0].status, 'delivered');
+});
+
+test('classificarEvento: payload vazio / desconhecido -> outro', () => {
+  assert.equal(classificarEvento({}).tipo, 'outro');
+  assert.equal(classificarEvento(evt({})).tipo, 'outro');
 });

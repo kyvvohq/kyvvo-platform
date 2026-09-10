@@ -36,7 +36,47 @@ function decidirDestino(phoneNumberId, env = process.env) {
   return env.STUDIO_WEBHOOK_URL || null;
 }
 
-function registerWebhookWhatsappRoutes(fastify) {
+// Classifica o evento pelo shape do payload da Meta (mesmo `value` do
+// extrairPhoneNumberId). `mensagem` = tem `messages[]`; `status` = tem
+// `statuses[]` (delivered/read/failed); senão `outro`.
+function classificarEvento(body) {
+  const change = (((body && body.entry) || [])[0] || {}).changes || [];
+  const value = (change[0] && change[0].value) || {};
+  if (Array.isArray(value.messages) && value.messages.length) return { tipo: 'mensagem', value };
+  if (Array.isArray(value.statuses) && value.statuses.length) return { tipo: 'status', value };
+  return { tipo: 'outro', value };
+}
+
+// Best-effort: registra o evento (e os status de mensagem, se houver) pro
+// admin poder auditar entregas/erros. Nunca bloqueia o 200 pra Meta.
+async function persistirEvento(pool, body, { phoneNumberId, destino }) {
+  const { tipo, value } = classificarEvento(body);
+  await pool.query(
+    `INSERT INTO whatsapp_webhook_events (phone_number_id, tipo, destino, encaminhado, payload)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [phoneNumberId || null, tipo, destino || null, !!destino, JSON.stringify(body)],
+  );
+  if (tipo === 'status') {
+    for (const s of value.statuses) {
+      const erro = (s.errors || [])[0] || {};
+      await pool.query(
+        `INSERT INTO whatsapp_message_status (message_id, phone_number_id, status, erro_codigo, erro_titulo, ts)
+         VALUES ($1, $2, $3, $4, $5, to_timestamp($6))
+         ON CONFLICT (message_id, status) DO NOTHING`,
+        [
+          s.id,
+          phoneNumberId || null,
+          s.status,
+          erro.code != null ? String(erro.code) : null,
+          erro.title || null,
+          Number(s.timestamp) || Math.floor(Date.now() / 1000),
+        ],
+      );
+    }
+  }
+}
+
+function registerWebhookWhatsappRoutes(fastify, pool) {
   fastify.get('/webhook/whatsapp', async (request, reply) => {
     const query = request.query || {};
     const valido = query['hub.mode'] === 'subscribe'
@@ -51,6 +91,12 @@ function registerWebhookWhatsappRoutes(fastify) {
       const body = request.body || {};
       const phoneNumberId = extrairPhoneNumberId(body);
       const destino = decidirDestino(phoneNumberId);
+
+      if (pool) {
+        persistirEvento(pool, body, { phoneNumberId, destino }).catch((err) =>
+          fastify.log.error({ err: err.message }, '[webhook-whatsapp] Falha ao persistir evento'),
+        );
+      }
 
       if (destino) {
         // Best-effort, sem esperar a resposta do produto influenciar o que a
@@ -72,4 +118,9 @@ function registerWebhookWhatsappRoutes(fastify) {
   });
 }
 
-module.exports = { registerWebhookWhatsappRoutes, decidirDestino, extrairPhoneNumberId };
+module.exports = {
+  registerWebhookWhatsappRoutes,
+  decidirDestino,
+  extrairPhoneNumberId,
+  classificarEvento,
+};
