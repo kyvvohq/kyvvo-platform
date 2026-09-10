@@ -4,6 +4,7 @@ import { useFetch } from '../../lib/useFetch';
 import { Estado } from '../../components/Estado';
 import { StatusBadge } from '../../components/StatusBadge';
 import { data, dataHora, telefone } from '../../lib/format';
+import { Acoes } from './Acoes';
 import type { Cliente360 } from './types';
 
 function Campo({ rotulo, valor }: { rotulo: string; valor: ReactNode }) {
@@ -49,6 +50,8 @@ export function Detalhe() {
               </div>
               <StatusBadge status={c.status_conta} />
             </header>
+
+            <Acoes cliente={c} onMudou={recarregar} />
 
             <div className="grade-360">
               <Secao titulo="Identidade">

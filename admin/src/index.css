@@ -224,6 +224,108 @@ input {
   font-size: 12px;
 }
 
+/* ---------- ações + modal ---------- */
+.acoes-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3, 12px);
+}
+
+.acao-plano {
+  display: flex;
+  gap: var(--space-2, 8px);
+}
+
+.acao-plano select {
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border: 1px solid var(--border, #e7eaf2);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--input-bg, #fff);
+  color: inherit;
+}
+
+.btn-primario,
+.btn-perigo,
+.btn-plano {
+  padding: var(--space-2, 8px) var(--space-4, 16px);
+  border-radius: var(--radius-sm, 8px);
+  font-weight: 600;
+  font-size: 13px;
+  border: 1px solid transparent;
+}
+
+.btn-primario {
+  background: var(--accent, #7c5cfc);
+  color: #fff;
+}
+.btn-primario:hover {
+  background: var(--accent-hover, #6a4ce0);
+}
+
+.btn-perigo {
+  background: var(--danger, #f04438);
+  color: #fff;
+}
+.btn-perigo:hover {
+  filter: brightness(0.94);
+}
+
+.btn-plano {
+  background: var(--card, #fff);
+  border-color: var(--border, #e7eaf2);
+  color: var(--text-secondary, #2b3040);
+}
+.btn-plano:hover {
+  background: var(--surface-hover, #eceff6);
+}
+
+.btn-primario:disabled,
+.btn-perigo:disabled,
+.btn-plano:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--overlay, rgba(15, 17, 26, 0.45));
+  display: grid;
+  place-items: center;
+  padding: var(--space-4, 16px);
+}
+
+.modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--card, #fff);
+  border-radius: var(--radius-lg, 16px);
+  padding: var(--space-5, 24px);
+  box-shadow: 0 16px 48px rgba(var(--shadow-rgb, 15, 17, 26), 0.24);
+}
+
+.modal h2 {
+  font-size: 16px;
+  margin: 0 0 var(--space-3, 12px);
+}
+
+.modal-corpo {
+  font-size: 13px;
+}
+
+.modal-corpo p {
+  margin: 0;
+}
+
+.modal-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2, 8px);
+  margin-top: var(--space-5, 24px);
+}
+
 .topbar-conta {
   display: flex;
   align-items: center;

@@ -6,6 +6,7 @@
 const planos = require('../../lib/planos');
 const { calcularTrialTenant, statusContaTenant } = require('../../lib/trial-conta');
 const { buscarPaineisProduto } = require('../../lib/product-adapters');
+const { registrarAuditoria } = require('../../lib/auditoria');
 
 // Colunas ordenáveis — mapa explícito, nunca interpolar order_by cru.
 const ORDER_COLUMNS = {
@@ -240,6 +241,114 @@ function registerAdminClientesRoutes(fastify, pool) {
       produtos,
     };
   });
+
+  // ---------------------------------------------------------------------------
+  // Ações sensíveis — cada uma numa transação com o AuditEvent (spec §6).
+  // ---------------------------------------------------------------------------
+
+  // suspender / reativar: mesma mecânica, muda o status alvo e a ação
+  // auditada. reativar sempre volta pra 'ativo' (não restaura trial — decisão
+  // de admin = conta ativa).
+  async function mutarStatus(request, reply, { novoStatus, acao }) {
+    const { id } = request.params;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(
+        'SELECT id, status FROM tenants WHERE id = $1 AND excluido_em IS NULL FOR UPDATE',
+        [id],
+      );
+      const tenant = rows[0];
+      if (!tenant) {
+        await client.query('ROLLBACK');
+        return reply.code(404).send({ error: 'Empresa não encontrada' });
+      }
+      if (tenant.status === novoStatus) {
+        await client.query('ROLLBACK');
+        return reply.code(409).send({ error: `Empresa já está "${novoStatus}".` });
+      }
+      const { rows: upd } = await client.query(
+        'UPDATE tenants SET status = $2, status_alterado_em = now() WHERE id = $1 RETURNING status',
+        [id, novoStatus],
+      );
+      await registrarAuditoria(client, {
+        atorAdminId: request.admin.adminId,
+        acao,
+        entidadeTipo: 'tenant',
+        entidadeId: id,
+        tenantId: id,
+        antes: { status: tenant.status },
+        depois: { status: upd[0].status },
+        request,
+      });
+      await client.query('COMMIT');
+      return { status: upd[0].status };
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
+  fastify.post(
+    '/admin/api/clientes/:id/suspender',
+    { preHandler: [fastify.authenticateAdmin, fastify.requirePermission('clientes:suspend')] },
+    (request, reply) => mutarStatus(request, reply, { novoStatus: 'suspenso', acao: 'tenant.suspender' }),
+  );
+
+  fastify.post(
+    '/admin/api/clientes/:id/reativar',
+    { preHandler: [fastify.authenticateAdmin, fastify.requirePermission('clientes:suspend')] },
+    (request, reply) => mutarStatus(request, reply, { novoStatus: 'ativo', acao: 'tenant.reativar' }),
+  );
+
+  fastify.patch(
+    '/admin/api/clientes/:id/plano',
+    { preHandler: [fastify.authenticateAdmin, fastify.requirePermission('plano:alterar')] },
+    async (request, reply) => {
+      const { id } = request.params;
+      const novoPlano = (request.body || {}).plano;
+      if (!novoPlano || !planos.obterPlano(novoPlano)) {
+        return reply.code(400).send({ error: 'Plano inválido.' });
+      }
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const { rows } = await client.query(
+          'SELECT id, plano FROM tenants WHERE id = $1 AND excluido_em IS NULL FOR UPDATE',
+          [id],
+        );
+        const tenant = rows[0];
+        if (!tenant) {
+          await client.query('ROLLBACK');
+          return reply.code(404).send({ error: 'Empresa não encontrada' });
+        }
+        if (tenant.plano === novoPlano) {
+          await client.query('ROLLBACK');
+          return reply.code(409).send({ error: 'Empresa já está nesse plano.' });
+        }
+        await client.query('UPDATE tenants SET plano = $2 WHERE id = $1', [id, novoPlano]);
+        await registrarAuditoria(client, {
+          atorAdminId: request.admin.adminId,
+          acao: 'tenant.alterar_plano',
+          entidadeTipo: 'tenant',
+          entidadeId: id,
+          tenantId: id,
+          antes: { plano: tenant.plano },
+          depois: { plano: novoPlano },
+          request,
+        });
+        await client.query('COMMIT');
+        return { plano: novoPlano, plano_nome: planos.nomeDoPlano(novoPlano) };
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
+      }
+    },
+  );
 }
 
 module.exports = { registerAdminClientesRoutes };
