@@ -349,6 +349,81 @@ function registerAdminClientesRoutes(fastify, pool) {
       }
     },
   );
+
+  // Liga/desliga um módulo (entitlement) de um tenant. Bloqueia desativar
+  // módulo obrigatório. Transação com AuditEvent, mesmo padrão das demais.
+  fastify.patch(
+    '/admin/api/clientes/:id/modulos/:key',
+    { preHandler: [fastify.authenticateAdmin, fastify.requirePermission('plano:alterar')] },
+    async (request, reply) => {
+      const { id, key } = request.params;
+      const { ativo } = request.body || {};
+      if (typeof ativo !== 'boolean') {
+        return reply.code(400).send({ error: 'Campo "ativo" deve ser booleano.' });
+      }
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        const { rows: tRows } = await client.query(
+          'SELECT id FROM tenants WHERE id = $1 AND excluido_em IS NULL FOR UPDATE',
+          [id],
+        );
+        if (!tRows[0]) {
+          await client.query('ROLLBACK');
+          return reply.code(404).send({ error: 'Empresa não encontrada' });
+        }
+
+        const { rows: mRows } = await client.query(
+          'SELECT key, nome, obrigatorio FROM modulos WHERE key = $1',
+          [key],
+        );
+        const modulo = mRows[0];
+        if (!modulo) {
+          await client.query('ROLLBACK');
+          return reply.code(404).send({ error: 'Módulo não encontrado' });
+        }
+        if (modulo.obrigatorio && !ativo) {
+          await client.query('ROLLBACK');
+          return reply.code(409).send({ error: `O módulo "${modulo.nome}" é obrigatório.` });
+        }
+
+        const { rows: atualRows } = await client.query(
+          'SELECT ativo FROM tenant_modulos WHERE tenant_id = $1 AND modulo_key = $2 FOR UPDATE',
+          [id, key],
+        );
+        const antes = atualRows[0] ? atualRows[0].ativo : false;
+        if (antes === ativo) {
+          await client.query('ROLLBACK');
+          return reply.code(409).send({ error: 'Módulo já está nesse estado.' });
+        }
+
+        await client.query(
+          `INSERT INTO tenant_modulos (tenant_id, modulo_key, ativo) VALUES ($1, $2, $3)
+           ON CONFLICT (tenant_id, modulo_key) DO UPDATE SET ativo = $3`,
+          [id, key, ativo],
+        );
+        await registrarAuditoria(client, {
+          atorAdminId: request.admin.adminId,
+          acao: ativo ? 'tenant.modulo_ativar' : 'tenant.modulo_desativar',
+          entidadeTipo: 'tenant_modulo',
+          entidadeId: `${id}:${key}`,
+          tenantId: id,
+          antes: { modulo: key, ativo: antes },
+          depois: { modulo: key, ativo },
+          request,
+        });
+        await client.query('COMMIT');
+        return { modulo: key, ativo };
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
+      }
+    },
+  );
 }
 
 module.exports = { registerAdminClientesRoutes };
