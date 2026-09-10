@@ -9,6 +9,8 @@ import { Lista as ClientesLista } from './pages/clientes/Lista';
 import { Detalhe as ClienteDetalhe } from './pages/clientes/Detalhe';
 import { UsuariosLista } from './pages/usuarios/Lista';
 import { ProdutosLista } from './pages/produtos/Lista';
+import { Planos as PlataformaPlanos } from './pages/plataforma/Planos';
+import { Assinaturas as PlataformaAssinaturas } from './pages/plataforma/Assinaturas';
 
 export function App() {
   const { admin, carregando } = useAuth();
@@ -77,8 +79,20 @@ export function App() {
           element={<Placeholder area="Campanhas" perm="campanha:read" />}
         />
         <Route
-          path="/plataforma/*"
-          element={<Placeholder area="Plataforma" perm="billing:read" />}
+          path="/plataforma"
+          element={
+            <RequirePerm perm="billing:read">
+              <PlataformaPlanos />
+            </RequirePerm>
+          }
+        />
+        <Route
+          path="/plataforma/assinaturas"
+          element={
+            <RequirePerm perm="billing:read">
+              <PlataformaAssinaturas />
+            </RequirePerm>
+          }
         />
         <Route
           path="/sistema/*"
