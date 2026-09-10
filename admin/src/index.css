@@ -588,6 +588,38 @@ input {
   margin: var(--space-3, 12px) 0 0;
 }
 
+.produto-painel + .produto-painel {
+  margin-top: var(--space-4, 16px);
+  padding-top: var(--space-4, 16px);
+  border-top: 1px solid var(--border, #e7eaf2);
+}
+
+.produto-painel h3 {
+  font-size: 13px;
+  margin: 0 0 var(--space-3, 12px);
+}
+
+.metricas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: var(--space-3, 12px);
+}
+
+.metrica {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metrica-valor {
+  font-family: var(--font-display, sans-serif);
+  font-size: 20px;
+}
+
+.metrica-rotulo {
+  font-size: 11px;
+}
+
 /* ---------- responsivo ---------- */
 @media (max-width: 720px) {
   .shell {
