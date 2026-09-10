@@ -11,6 +11,8 @@ import { UsuariosLista } from './pages/usuarios/Lista';
 import { ProdutosLista } from './pages/produtos/Lista';
 import { Planos as PlataformaPlanos } from './pages/plataforma/Planos';
 import { Assinaturas as PlataformaAssinaturas } from './pages/plataforma/Assinaturas';
+import { Numeros as WhatsappNumeros } from './pages/whatsapp/Numeros';
+import { Eventos as WhatsappEventos } from './pages/whatsapp/Eventos';
 
 export function App() {
   const { admin, carregando } = useAuth();
@@ -71,8 +73,20 @@ export function App() {
           }
         />
         <Route
-          path="/whatsapp/*"
-          element={<Placeholder area="WhatsApp" perm="whatsapp:read" />}
+          path="/whatsapp"
+          element={
+            <RequirePerm perm="whatsapp:read">
+              <WhatsappNumeros />
+            </RequirePerm>
+          }
+        />
+        <Route
+          path="/whatsapp/eventos"
+          element={
+            <RequirePerm perm="whatsapp:read">
+              <WhatsappEventos />
+            </RequirePerm>
+          }
         />
         <Route
           path="/campanhas/*"

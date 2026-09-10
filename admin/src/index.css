@@ -224,6 +224,30 @@ input {
   font-size: 12px;
 }
 
+.texto-danger {
+  color: var(--danger, #f04438);
+  font-weight: 600;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.payload {
+  margin: 0;
+  max-height: 50vh;
+  overflow: auto;
+  background: var(--sunken, #e7eaf2);
+  border-radius: var(--radius-sm, 8px);
+  padding: var(--space-3, 12px);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* ---------- ações + modal ---------- */
 .acoes-linha {
   display: flex;
