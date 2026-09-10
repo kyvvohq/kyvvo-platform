@@ -322,10 +322,33 @@ por conta própria:
   onde o nginx a manda. Rollback = tirar os dois `location`.
 
 ### Fase 3 — WhatsApp & Templates
-- `db/005` + `db/006`; `webhook-whatsapp.js` passa a **persistir** eventos/status
-- Números / WABAs / saúde básica (leitura)
-- Templates: CRUD + versões + estados + sync Meta (`stub` → real; validar antes
-  o que `META_WHATSAPP_TOKEN` permite como Tech Provider)
+
+**3a — WhatsApp (feito, PR #21):**
+- [x] `db/005_whatsapp_assets.sql` — `whatsapp_webhook_events` +
+  `whatsapp_message_status`.
+- [x] `routes/webhook-whatsapp.js` persiste cada evento (best-effort, não
+  bloqueia o 200 pra Meta); `classificarEvento` pura.
+- [x] `routes/admin/whatsapp.js` (`whatsapp:read`) — `/whatsapp/{resumo,
+  numeros,eventos,eventos/:id}`. Números = projeção sobre
+  `tenants.meta_phone_number_id`.
+- [x] SPA: área WhatsApp sai do `Placeholder` (sub-abas Números | Eventos).
+
+**3b — Templates (feito, PR #22):**
+- [x] `db/006_messaging.sql` — `message_templates` + `_versions`; `campaigns`
+  + `campaign_results` modeladas (MVP não popula).
+- [x] `lib/templates.js` (`renderizar`/`extrairPlaceholders`, puros).
+- [x] `routes/admin/templates.js` (`template:read`/`template:write`) — CRUD +
+  versionamento (snapshot no PATCH) + `submeter` (stub) + `estado` (sync
+  manual do veredito Meta) + `testar` (preview). Ações auditadas.
+- [x] SPA: área Campanhas sai do `Placeholder` (sub-abas Templates |
+  Disparos; Disparos = empty state). Editor com preview client-side,
+  variáveis dinâmicas, histórico de versões.
+
+**3c — fica pra depois:** WABAs + quality rating ao vivo (Graph API da Meta —
+validar antes o escopo de Tech Provider do token); submissão real de template
+à Meta (hoje `submeter` é stub); dispatch de campanha + `campaign_results`.
+
+### Fase 4 — Visão geral + Sistema + polish
 
 ### Fase 4 — Visão geral + Sistema + polish
 - KPIs clicáveis na home
