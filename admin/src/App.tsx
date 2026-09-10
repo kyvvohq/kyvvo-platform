@@ -1,9 +1,12 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './lib/auth';
 import { Shell } from './components/Shell';
+import { RequirePerm } from './components/RequirePerm';
 import { Login } from './pages/Login';
 import { Overview } from './pages/Overview';
 import { Placeholder } from './pages/Placeholder';
+import { Lista as ClientesLista } from './pages/clientes/Lista';
+import { Detalhe as ClienteDetalhe } from './pages/clientes/Detalhe';
 
 export function App() {
   const { admin, carregando } = useAuth();
@@ -29,10 +32,24 @@ export function App() {
     <Shell>
       <Routes>
         <Route path="/" element={<Overview />} />
+
         <Route
-          path="/clientes/*"
-          element={<Placeholder area="Clientes" perm="clientes:read" />}
+          path="/clientes"
+          element={
+            <RequirePerm perm="clientes:read">
+              <ClientesLista />
+            </RequirePerm>
+          }
         />
+        <Route
+          path="/clientes/:id"
+          element={
+            <RequirePerm perm="clientes:read">
+              <ClienteDetalhe />
+            </RequirePerm>
+          }
+        />
+
         <Route
           path="/produtos/*"
           element={<Placeholder area="Produtos" perm="clientes:read" />}
