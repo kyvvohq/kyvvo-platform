@@ -494,6 +494,61 @@ code {
   font-size: 12px;
 }
 
+.kpi-link {
+  transition: border-color 0.12s ease;
+}
+
+.kpi-link:hover {
+  border-color: var(--accent, #7c5cfc);
+}
+
+.secao-titulo {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted, #6b7385);
+  margin: 0 0 var(--space-3, 12px);
+}
+
+.pagina > section {
+  display: block;
+}
+
+.alertas {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.alerta {
+  font-size: 13px;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-radius: var(--radius-sm, 8px);
+  border-left: 3px solid var(--border-strong, #d7dce8);
+  background: var(--surface-muted, #f1f3f8);
+}
+
+.alerta-alta {
+  border-left-color: var(--danger, #f04438);
+  background: var(--danger-bg, rgba(240, 68, 56, 0.1));
+}
+
+.alerta-media {
+  border-left-color: var(--warning, #f79009);
+  background: var(--warning-bg, rgba(247, 144, 9, 0.12));
+}
+
+.alerta a {
+  font-weight: 500;
+}
+
+.alerta a:hover {
+  text-decoration: underline;
+}
+
 .painel {
   background: var(--card, #fff);
   border: 1px solid var(--border, #e7eaf2);
