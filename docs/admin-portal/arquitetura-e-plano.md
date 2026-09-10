@@ -219,19 +219,29 @@ relatórios de campanha reais, impersonar cliente, billing self-service pelo adm
   (dormente até `admin/dist` existir) + fallback de SPA
 - [x] `test/admin-session.test.js`
 
-**0b — SPA (próximo PR):**
-- [ ] `admin/` — scaffold Vite + React + TS; `vite.config` com `base:'/admin/'`
-- [ ] `/ds/` servido pelo platform (`@kyvvohq/design-system` como dep); shell
-  usa `/ds/tokens.css` + `/ds/components.css` (mesmo padrão do Studio)
-- [ ] Shell: sidebar (nav gateada por `perms` de `/me`) + topbar + busca
-  global (stub) + tela de login + contexto de auth (token, refresh silencioso,
-  401 → login)
-- [ ] Páginas: Login + Visão geral (placeholder) + stubs das áreas do MVP
-  (Clientes, Produtos, Plataforma, WhatsApp, Templates, Sistema) com estado
-  `empty`
-- [ ] `ci.yml`: job que roda `npm ci && npm run build` + typecheck do SPA
-- [ ] `deploy.yml`: passo de build do SPA antes do scp + `admin/dist/**` no
-  `source`/`paths`
+**0b — SPA (feito, PR `feat/admin-fase0-spa`):**
+- [x] `admin/` — Vite + React + TS; `vite.config` com `base:'/admin/'` e proxy
+  de `/admin/api` + `/ds` pro `:3003` em dev
+- [x] `/ds/` servido pelo platform (`@kyvvohq/design-system` como dep;
+  `@fastify/static` com `decorateReply` só na 1ª registração); a SPA referencia
+  `/ds/tokens.css` + `/ds/components.css` (mesmo padrão do Studio) — Vite deixa
+  as URLs absolutas intactas
+- [x] `src/lib/api.ts` (Bearer + refresh silencioso no 401 + logout/redirect),
+  `src/lib/auth.tsx` (`useAuth`: `admin`, `entrar`, `sair`, `pode(...perms)`),
+  `src/lib/nav.ts` (nav de 1º nível + permissão por item)
+- [x] Shell: `Sidebar` (itens filtrados por `pode(...)`), `Topbar` (busca
+  global stub + identidade + Sair), tela de `Login`
+- [x] Páginas: `Overview` (KPIs placeholder + slot de alertas) + `Placeholder`
+  gateado por permissão pras áreas do MVP (Clientes/Produtos/Plataforma/
+  WhatsApp/Templates/Sistema)
+- [x] `ci.yml`: job `admin-spa` (`npm ci && npm run build`, inclui `tsc`)
+- [x] `deploy.yml`: build do SPA no runner + `admin/dist/**` no scp
+  `source`/`paths` (o container em prod não builda nada)
+- [x] `index.js`: `/admin` só registra se `admin/dist/index.html` existir
+
+**Falta pra fechar a Fase 0 (operacional):**
+- Deploy pra prod (merge do PR) e conferir `auth.kyvvo.com.br/admin/` no
+  browser — login com o `admin@kyvvo.com.br` já criado.
 
 ### Fase 1 — Clientes 360°
 - Empresas: lista + filtros (produto, plano, status, WhatsApp, data)

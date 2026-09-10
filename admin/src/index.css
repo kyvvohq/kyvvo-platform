@@ -1,0 +1,349 @@
+/* Estilos do shell do Kyvvo Admin. Tokens (cores, espaço, raio, fontes) vêm
+   do Design System em /ds/tokens.css — aqui só o layout do portal. */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-ui, system-ui, sans-serif);
+  background: var(--bg, #f8f9fc);
+  color: var(--text, #0f111a);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+input {
+  font: inherit;
+}
+
+.muted {
+  color: var(--muted, #6b7385);
+}
+
+/* ---------- telas cheias (carregando / login) ---------- */
+.tela-cheia {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+/* ---------- shell ---------- */
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 232px;
+  flex-shrink: 0;
+  background: var(--card, #fff);
+  border-right: 1px solid var(--border, #e7eaf2);
+  padding: var(--space-5, 24px) var(--space-4, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6, 32px);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar-marca {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2, 8px);
+  padding-left: var(--space-2, 8px);
+}
+
+.sidebar-logo {
+  font-family: var(--font-display, sans-serif);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--accent, #7c5cfc);
+}
+
+.sidebar-tag {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted, #6b7385);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-link {
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text-secondary, #2b3040);
+  font-weight: 500;
+}
+
+.sidebar-link:hover {
+  background: var(--surface-hover, #eceff6);
+}
+
+.sidebar-link.ativo {
+  background: var(--accent-tint, #f1eeff);
+  color: var(--accent, #7c5cfc);
+  font-weight: 600;
+}
+
+.shell-corpo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  height: 60px;
+  flex-shrink: 0;
+  background: var(--card, #fff);
+  border-bottom: 1px solid var(--border, #e7eaf2);
+  padding: 0 var(--space-5, 24px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.busca-global {
+  flex: 1;
+  max-width: 460px;
+}
+
+.busca-global input {
+  width: 100%;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border: 1px solid var(--border, #e7eaf2);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--input-bg, #fff);
+  color: inherit;
+}
+
+.busca-global input:focus {
+  outline: 2px solid var(--accent, #7c5cfc);
+  outline-offset: -1px;
+}
+
+.topbar-conta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+}
+
+.topbar-admin {
+  font-weight: 500;
+  color: var(--text-secondary, #2b3040);
+}
+
+.btn-sair {
+  padding: 6px var(--space-3, 12px);
+  border: 1px solid var(--border, #e7eaf2);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--card, #fff);
+  color: var(--text-secondary, #2b3040);
+}
+
+.btn-sair:hover {
+  background: var(--surface-hover, #eceff6);
+}
+
+.shell-conteudo {
+  flex: 1;
+  padding: var(--space-6, 32px);
+}
+
+/* ---------- páginas ---------- */
+.pagina {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6, 32px);
+}
+
+.pagina-header h1 {
+  font-family: var(--font-display, sans-serif);
+  font-size: 22px;
+  margin: 0 0 4px;
+}
+
+.pagina-header p {
+  margin: 0;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4, 16px);
+}
+
+.kpi-card {
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #e7eaf2);
+  border-radius: var(--radius-lg, 16px);
+  padding: var(--space-4, 16px) var(--space-5, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi-rotulo {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted, #6b7385);
+}
+
+.kpi-valor {
+  font-family: var(--font-display, sans-serif);
+  font-size: 28px;
+}
+
+.kpi-hint {
+  font-size: 12px;
+}
+
+.painel {
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #e7eaf2);
+  border-radius: var(--radius-lg, 16px);
+  padding: var(--space-5, 24px);
+}
+
+.painel h2 {
+  font-size: 15px;
+  margin: 0 0 var(--space-2, 8px);
+}
+
+.empty-state {
+  background: var(--card, #fff);
+  border: 1px dashed var(--border-strong, #d7dce8);
+  border-radius: var(--radius-lg, 16px);
+  padding: var(--space-7, 48px);
+  text-align: center;
+}
+
+.empty-state h2 {
+  font-size: 16px;
+  margin: 0 0 var(--space-2, 8px);
+}
+
+.empty-state p {
+  margin: 0;
+}
+
+/* ---------- login ---------- */
+.login-wrap {
+  padding: var(--space-4, 16px);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #e7eaf2);
+  border-radius: var(--radius-lg, 16px);
+  padding: var(--space-6, 32px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+
+.login-marca {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2, 8px);
+  margin-bottom: var(--space-2, 8px);
+}
+
+.login-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.login-card input {
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border: 1px solid var(--border, #e7eaf2);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--input-bg, #fff);
+  color: inherit;
+}
+
+.login-card input:focus {
+  outline: 2px solid var(--accent, #7c5cfc);
+  outline-offset: -1px;
+}
+
+.login-card button {
+  margin-top: var(--space-2, 8px);
+  padding: var(--space-3, 12px);
+  border: 0;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--accent, #7c5cfc);
+  color: #fff;
+  font-weight: 600;
+}
+
+.login-card button:hover {
+  background: var(--accent-hover, #6a4ce0);
+}
+
+.login-card button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.login-erro {
+  margin: 0;
+  color: var(--danger, #f04438);
+  font-size: 13px;
+}
+
+/* ---------- responsivo ---------- */
+@media (max-width: 720px) {
+  .shell {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-4, 16px);
+    overflow-x: auto;
+    padding: var(--space-3, 12px) var(--space-4, 16px);
+  }
+  .sidebar-nav {
+    flex-direction: row;
+    gap: var(--space-1, 4px);
+  }
+  .shell-conteudo {
+    padding: var(--space-4, 16px);
+  }
+}

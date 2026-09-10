@@ -5,13 +5,11 @@ on:
     branches: [main]
   pull_request:
 
-# A suíte atual (test/*.test.js) só exercita funções puras + crypto e depende
-# apenas de `jsonwebtoken` — não precisa dos @kyvvohq/* (GitHub Packages
-# privado) nem de um Postgres. Como o `.npmrc` do repo força autenticação no
-# GitHub Packages pra qualquer `npm install`, a dep de teste é instalada num
-# diretório isolado (sem esse .npmrc) e resolvida via NODE_PATH. O
-# `npm install` completo + testes de integração rodam localmente / na EC2, e
-# passam a rodar aqui quando o secret NPM_PACKAGES_TOKEN for adicionado.
+# A suíte do serviço (test/*.test.js) só exercita funções puras + crypto e
+# depende apenas de `jsonwebtoken` — não precisa dos @kyvvohq/* (GitHub
+# Packages privado) nem de um Postgres. Como o `.npmrc` do repo força
+# autenticação no GitHub Packages pra qualquer `npm install`, a dep de teste é
+# instalada num diretório isolado (sem esse .npmrc) e resolvida via NODE_PATH.
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -29,5 +27,25 @@ jobs:
         run: NODE_PATH="$RUNNER_TEMP/deps/node_modules" node --test test/*.test.js
       - name: node -c em todos os .js
         run: |
-          find . -name "*.js" -not -path "./node_modules/*" -print0 \
+          find . -name "*.js" -not -path "*/node_modules/*" -not -path "*/dist/*" -print0 \
             | xargs -0 -n1 node -c
+
+  # A SPA do admin (admin/) só tem deps públicas — o Design System é consumido
+  # via /ds/ em runtime, não importado. `npm ci` + build valida tipos (tsc) e
+  # bundle. O mesmo build roda no deploy pra gerar admin/dist.
+  admin-spa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+      - name: Build
+        working-directory: admin
+        env:
+          NPM_PACKAGES_TOKEN: ${{ secrets.NPM_PACKAGES_TOKEN }}
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build

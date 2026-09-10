@@ -8,3 +8,6 @@ env/
 
 # SPA do portal admin — build gerado no deploy (ver admin/README.md)
 admin/dist/
+
+# TS incremental cache
+*.tsbuildinfo

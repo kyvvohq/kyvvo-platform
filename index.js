@@ -39,13 +39,28 @@ function build() {
   registerWebhookWhatsappRoutes(fastify);
   registerAdminAuthRoutes(fastify, pool);
 
+  // Estáticos: /ds/ (Design System, mesmo padrão do Studio) e /admin/ (a SPA
+  // buildada). @fastify/static só decora reply.sendFile uma vez — as demais
+  // registrações passam decorateReply:false.
+  let staticDecorado = false;
+  const registrarEstatico = (opts) => {
+    fastify.register(fastifyStatic, { ...opts, decorateReply: !staticDecorado });
+    staticDecorado = true;
+  };
+
+  // @kyvvohq/design-system: a SPA referencia /ds/tokens.css etc.
+  const dsRoot = path.join(__dirname, 'node_modules', '@kyvvohq', 'design-system');
+  if (fs.existsSync(dsRoot)) {
+    registrarEstatico({ root: dsRoot, prefix: '/ds/' });
+  }
+
   // Portal admin (SPA Vite/React) servido estático em /admin. O build vai pra
   // admin/dist no deploy (não versionado; ver admin/README.md). Enquanto o
   // build não existe — CI, dev sem build — nada disto sobe e o serviço segue
   // sendo só a API.
   const adminDist = path.join(__dirname, 'admin', 'dist');
   if (fs.existsSync(path.join(adminDist, 'index.html'))) {
-    fastify.register(fastifyStatic, { root: adminDist, prefix: '/admin/', wildcard: false });
+    registrarEstatico({ root: adminDist, prefix: '/admin/', wildcard: false });
 
     fastify.setNotFoundHandler((request, reply) => {
       // Fallback de SPA: GET em /admin/* que não seja arquivo real nem
