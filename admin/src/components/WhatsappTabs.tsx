@@ -10,6 +10,9 @@ export function WhatsappTabs() {
       <NavLink to="/whatsapp/eventos" className={cls}>
         Eventos
       </NavLink>
+      <NavLink to="/whatsapp/ia-uso" className={cls}>
+        IA
+      </NavLink>
     </nav>
   );
 }
