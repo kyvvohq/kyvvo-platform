@@ -16,6 +16,11 @@ const ORDER_COLUMNS = {
   status: 't.status',
 };
 
+// Enum legado de tenants.segmento (CHECK da migration 018 do Studio) — usado
+// só pela edição de cadastro do admin. O cadastro self-service usa
+// segmento_id → tabela `segmentos`.
+const SEGMENTOS_VALIDOS = ['salao_beleza', 'petshop', 'psicologia', 'fisioterapia', 'pilates', 'outro'];
+
 // Buckets do filtro "Status ▾" — chave do frontend → rótulos de
 // statusContaTenant. "inativo" cobre tudo que não é Ativo / Trial ativo,
 // mesmo agrupamento do card de resumo (pra a soma bater).
@@ -416,6 +421,80 @@ function registerAdminClientesRoutes(fastify, pool) {
         });
         await client.query('COMMIT');
         return { modulo: key, ativo };
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
+      }
+    },
+  );
+
+  // Editar o cadastro de uma empresa — nome / contato / endereço / segmento.
+  // Vinha do admin do Studio (PATCH /admin/api/tenants/:id). Não mexe em
+  // status/plano/módulos (esses têm rota própria). `ativo` fica de fora de
+  // propósito: o corte de acesso é suspender/reativar.
+  fastify.patch(
+    '/admin/api/clientes/:id',
+    { preHandler: [fastify.authenticateAdmin, fastify.requirePermission('clientes:editar')] },
+    async (request, reply) => {
+      const { id } = request.params;
+      const b = request.body || {};
+      if (b.segmento !== undefined && b.segmento !== null && !SEGMENTOS_VALIDOS.includes(b.segmento)) {
+        return reply.code(400).send({ error: `segmento deve ser um de: ${SEGMENTOS_VALIDOS.join(', ')}` });
+      }
+      if (b.nome !== undefined && !String(b.nome).trim()) {
+        return reply.code(400).send({ error: 'Nome não pode ficar em branco.' });
+      }
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const { rows } = await client.query(
+          'SELECT id, nome, telefone, whatsapp, endereco, segmento FROM tenants WHERE id = $1 AND excluido_em IS NULL FOR UPDATE',
+          [id],
+        );
+        const antes = rows[0];
+        if (!antes) {
+          await client.query('ROLLBACK');
+          return reply.code(404).send({ error: 'Empresa não encontrada' });
+        }
+        const { rows: upd } = await client.query(
+          `UPDATE tenants SET
+             nome = COALESCE($2, nome),
+             telefone = COALESCE($3, telefone),
+             whatsapp = COALESCE($4, whatsapp),
+             endereco = COALESCE($5, endereco),
+             segmento = COALESCE($6, segmento)
+           WHERE id = $1
+           RETURNING id, nome, telefone, whatsapp, endereco, segmento`,
+          [
+            id,
+            b.nome !== undefined ? String(b.nome).trim() : null,
+            b.telefone ?? null,
+            b.whatsapp ?? null,
+            b.endereco ?? null,
+            b.segmento ?? null,
+          ],
+        );
+        await registrarAuditoria(client, {
+          atorAdminId: request.admin.adminId,
+          acao: 'tenant.editar_cadastro',
+          entidadeTipo: 'tenant',
+          entidadeId: id,
+          tenantId: id,
+          antes: {
+            nome: antes.nome,
+            telefone: antes.telefone,
+            whatsapp: antes.whatsapp,
+            endereco: antes.endereco,
+            segmento: antes.segmento,
+          },
+          depois: upd[0],
+          request,
+        });
+        await client.query('COMMIT');
+        return upd[0];
       } catch (e) {
         await client.query('ROLLBACK');
         throw e;

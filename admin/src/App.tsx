@@ -18,6 +18,7 @@ import { Disparos as CampanhasDisparos } from './pages/campanhas/Disparos';
 import { Auditoria as SistemaAuditoria } from './pages/sistema/Auditoria';
 import { Flags as SistemaFlags } from './pages/sistema/Flags';
 import { Admins as SistemaAdmins } from './pages/sistema/Admins';
+import { Config as SistemaConfig } from './pages/sistema/Config';
 
 export function App() {
   const { admin, carregando } = useAuth();
@@ -162,6 +163,14 @@ export function App() {
           element={
             <RequirePerm perm="admin:manage">
               <SistemaAdmins />
+            </RequirePerm>
+          }
+        />
+        <Route
+          path="/sistema/config"
+          element={
+            <RequirePerm perm="config:read">
+              <SistemaConfig />
             </RequirePerm>
           }
         />
