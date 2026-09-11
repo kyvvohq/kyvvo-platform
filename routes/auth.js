@@ -22,6 +22,14 @@ const REENVIO_COOLDOWN_SEGUNDOS = 60;
 
 // Módulos liberados automaticamente no trial (US77/CA09).
 const MODULOS_TRIAL = ['agenda_inteligente', 'financeiro', 'dashboards'];
+// Cadastro pelo People (produto:'people' no body) — produtos diferentes no
+// mesmo serviço de auth, ver [[project_kyvvo_people]]. Sem trial (decisão de
+// produto do People, 2026-08-30): a conta nasce 'ativo' (a CONTA existe e é
+// válida — não confundir com "assinatura ativa" do People, que é outra
+// tabela, em outro serviço); só o módulo 'people' é ligado, nunca os módulos
+// do Studio. O bloqueio de funcionalidades até fechar uma licença é feito no
+// kyvvo-people (checa a própria tabela `assinaturas`), não aqui.
+const MODULOS_PEOPLE = ['people'];
 const TERMOS_VERSAO = '2026-07-22';
 const PRIVACIDADE_VERSAO = '2026-07-22';
 
@@ -226,7 +234,9 @@ function registerAuthRoutes(fastify, pool) {
       aceite_termos: aceiteTermosBruto,
       aceita_marketing: aceitaMarketingBruto,
       plano_slug: planoSlugBruto,
+      produto: produtoBruto,
     } = request.body || {};
+    const produto = produtoBruto === 'people' ? 'people' : 'studio';
 
     const nomeEmpresaLimpo = (nomeEmpresa || '').trim();
     const nomeLimpo = (nomeResponsavel || '').trim();
@@ -289,7 +299,9 @@ function registerAuthRoutes(fastify, pool) {
       }
       segmentoSlug = segmentoRows[0].slug;
     }
-    const onboardingPendente = segmentoId === null;
+    // Onboarding por segmento é conceito do Studio (US82) — o People não tem
+    // segmento nem etapa de onboarding, então nunca fica "pendente".
+    const onboardingPendente = produto === 'studio' && segmentoId === null;
 
     let planoChave = null;
     let planoSlugResolvido = null;
@@ -310,20 +322,28 @@ function registerAuthRoutes(fastify, pool) {
     try {
       await client.query('BEGIN');
 
-      const trialExpira = new Date(Date.now() + configSistema.config.trialDias * 24 * 60 * 60 * 1000);
+      // People não tem trial (decisão de produto, ver MODULOS_PEOPLE acima):
+      // status nasce 'ativo' e sem trial_expires_at — o bloqueio até fechar
+      // uma licença é responsabilidade do kyvvo-people, via a própria
+      // assinatura dele, não deste `status` (que aqui é só "a conta existe").
+      const statusInicial = produto === 'people' ? 'ativo' : 'trial';
+      const trialExpira = produto === 'people'
+        ? null
+        : new Date(Date.now() + configSistema.config.trialDias * 24 * 60 * 60 * 1000).toISOString();
       const { rows: tenantRows } = await client.query(
         `INSERT INTO tenants (nome, telefone, whatsapp, segmento, segmento_id, plano, status, trial_expires_at, onboarding_pendente)
-         VALUES ($1, $2, $3, $4, $5, $6, 'trial', $7, $8)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING id`,
-        [nomeEmpresaLimpo, telefone, whatsapp, segmentoSlug, segmentoId, planoChave || 'trial', trialExpira.toISOString(), onboardingPendente]
+        [nomeEmpresaLimpo, telefone, whatsapp, segmentoSlug, segmentoId, produto === 'people' ? planoChave : (planoChave || 'trial'), statusInicial, trialExpira, onboardingPendente]
       );
       const tenantId = tenantRows[0].id;
 
+      const modulosIniciais = produto === 'people' ? MODULOS_PEOPLE : MODULOS_TRIAL;
       await client.query(
         `INSERT INTO tenant_modulos (tenant_id, modulo_key, ativo)
          SELECT $1, key, true FROM modulos WHERE key = ANY($2::text[])
          ON CONFLICT (tenant_id, modulo_key) DO NOTHING`,
-        [tenantId, MODULOS_TRIAL]
+        [tenantId, modulosIniciais]
       );
 
       const hash = await bcrypt.hash(senha, 10);
