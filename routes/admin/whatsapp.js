@@ -8,6 +8,8 @@
 // WABAs e quality rating ao vivo entram depois (dependem de chamada à Graph
 // API da Meta / gestão de número de verdade).
 
+const { buscarIaUso } = require('../../lib/product-adapters');
+
 function registerAdminWhatsappRoutes(fastify, pool) {
   const guard = {
     preHandler: [fastify.authenticateAdmin, fastify.requirePermission('whatsapp:read')],
@@ -78,6 +80,47 @@ function registerAdminWhatsappRoutes(fastify, pool) {
     );
     if (!rows[0]) return reply.code(404).send({ error: 'Evento não encontrado' });
     return rows[0];
+  });
+
+  // Status de um número ao vivo na Graph API da Meta (quality_rating,
+  // verified_name, code_verification_status). Diagnóstico de token/número
+  // sem entrar no Meta Business — portado do admin do Studio.
+  fastify.get('/admin/api/whatsapp/numeros/:pnid/status', guard, async (request, reply) => {
+    const token = process.env.META_WHATSAPP_TOKEN;
+    if (!token) return reply.code(503).send({ error: 'META_WHATSAPP_TOKEN não configurado.' });
+
+    const { pnid } = request.params;
+    try {
+      const res = await fetch(
+        `https://graph.facebook.com/v22.0/${encodeURIComponent(pnid)}?fields=display_phone_number,verified_name,quality_rating,code_verification_status,platform_type`,
+        { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) },
+      );
+      const corpo = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return {
+          ok: false,
+          erro: (corpo.error && corpo.error.message) || `A Meta respondeu ${res.status}.`,
+        };
+      }
+      return {
+        ok: true,
+        numero_exibido: corpo.display_phone_number || null,
+        nome_verificado: corpo.verified_name || null,
+        quality_rating: corpo.quality_rating || null,
+        status_verificacao: corpo.code_verification_status || null,
+        platform_type: corpo.platform_type || null,
+      };
+    } catch (err) {
+      return { ok: false, erro: err && err.name === 'TimeoutError' ? 'timeout' : 'indisponível' };
+    }
+  });
+
+  // Consumo de IA agregado (vem do adapter do Studio — conversas_ia mora lá).
+  fastify.get('/admin/api/whatsapp/ia-uso', guard, async (request, reply) => {
+    const dias = Math.min(Math.max(parseInt(request.query.dias, 10) || 30, 1), 90);
+    const dados = await buscarIaUso(dias);
+    if (!dados) return reply.code(503).send({ error: 'Painel de IA indisponível (adapter do Studio).' });
+    return dados;
   });
 }
 

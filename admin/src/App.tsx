@@ -12,6 +12,7 @@ import { Planos as PlataformaPlanos } from './pages/plataforma/Planos';
 import { Assinaturas as PlataformaAssinaturas } from './pages/plataforma/Assinaturas';
 import { Numeros as WhatsappNumeros } from './pages/whatsapp/Numeros';
 import { Eventos as WhatsappEventos } from './pages/whatsapp/Eventos';
+import { IaUso as WhatsappIaUso } from './pages/whatsapp/IaUso';
 import { Templates as CampanhasTemplates } from './pages/campanhas/Templates';
 import { TemplateEditor } from './pages/campanhas/TemplateEditor';
 import { Disparos as CampanhasDisparos } from './pages/campanhas/Disparos';
@@ -91,6 +92,14 @@ export function App() {
           element={
             <RequirePerm perm="whatsapp:read">
               <WhatsappEventos />
+            </RequirePerm>
+          }
+        />
+        <Route
+          path="/whatsapp/ia-uso"
+          element={
+            <RequirePerm perm="whatsapp:read">
+              <WhatsappIaUso />
             </RequirePerm>
           }
         />
