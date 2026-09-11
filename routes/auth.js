@@ -67,6 +67,12 @@ function registerAuthRoutes(fastify, pool) {
 
     const token = assinarAcesso(usuario);
 
+    // Best-effort: Kyvvo Admin mostra isso na tela de Usuários (coluna
+    // "Último login", ao lado de "Cadastrado em"). Não bloqueia o login se
+    // falhar — não faz parte do BEGIN/COMMIT de nada, é só telemetria.
+    pool.query('UPDATE usuarios SET ultimo_login_em = now() WHERE id = $1', [usuario.id])
+      .catch((erro) => fastify.log.warn({ erro: erro.message, userId: usuario.id }, 'Falha ao gravar ultimo_login_em'));
+
     return { token, nome: usuario.nome, email: usuario.email, email_verified: usuario.email_verified, role: usuario.role };
   });
 
