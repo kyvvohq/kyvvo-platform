@@ -13,6 +13,9 @@ export function WhatsappTabs() {
       <NavLink to="/whatsapp/ia-uso" className={cls}>
         IA
       </NavLink>
+      <NavLink to="/whatsapp/numeros-prontos" className={cls}>
+        Números prontos
+      </NavLink>
     </nav>
   );
 }
