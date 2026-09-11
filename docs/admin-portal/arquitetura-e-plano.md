@@ -377,12 +377,34 @@ em prod após cada deploy (o repo não tem harness de integração — os testes
 Playwright do Studio não se aplicam aqui).
 
 ### Fase 5 — Cutover
-- Parity check vs admin atual do Studio
-- Repontar `admin.kyvvo.com.br` no nginx: `:3001` → `:3003` (mirror em
-  `kyvvo-infra`)
-- PR de remoção no `kyvvo-studio`: `server/panel/public/admin/*` +
-  `routes/admin-*.js` + testes `admin*.spec.js`
-- `kyvvo_admins` → read-only, depois `drop`
+
+**Parity check (2026-09-10) — FEITO.** Comparado item a item com o admin do
+Studio. Decisões do Bruno:
+- **Portados** (PRs #26/#27/#28 no platform + #23/#25 no kyvvo-studio):
+  F config de sistema · C editar cadastro do tenant · G status WhatsApp ao
+  vivo na Meta · H IA-uso (via adapter) · I números prontos (via adapter).
+- **Descartados**: A modo de atendimento bot/ia · B criar tenant manual ·
+  D excluir empresa · J versão/changelog.
+- **Adiado**: E editar plano com versionamento (§12).
+
+**Runbook do corte (executar quando for a hora):**
+1. Confirmar que o admin novo cobre a operação (as telas portadas estão no
+   ar em `auth.kyvvo.com.br/admin/`).
+2. **nginx** (`kyvvo-infra/nginx/kyvvo.conf` + aplicar no EC2): o bloco de
+   `admin.kyvvo.com.br` hoje reescreve prefixando `/admin/` e proxia pro
+   `:3001` (Studio). Trocar por um `server{}` **sem rewrite** → `:3003`
+   (platform serve `/admin/` e `/admin/api/` direto). Rollback = bloco antigo.
+3. **`kyvvo_admins` → `platform.admin_users`**: `INSERT ... SELECT` das linhas
+   restantes (mesmo `bcryptjs`, hash copiável). Já tem `admin@kyvvo.com.br`
+   lá; migrar os demais admins reais. Depois `kyvvo_admins` read-only → drop
+   num migration seguinte.
+4. **PR de remoção no `kyvvo-studio`**: apagar `server/panel/public/admin/*`,
+   `routes/admin-{auth,tenants,configuracoes,monitoramento,numeros-prontos,
+   usuarios}.js` e os testes `tests/admin*.spec.js`. **MANTER**
+   `routes/admin-adapter.js` (é o que o Kyvvo Admin consome). Tirar os
+   `register…` do `index.js`.
+5. FKs órfãs no Studio (`029`, `037`, `044`, `046` apontavam pra
+   `kyvvo_admins`) → migration dropando as FKs, colunas viram `uuid` solto.
 
 ---
 
