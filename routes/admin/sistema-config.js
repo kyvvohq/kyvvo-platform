@@ -29,7 +29,7 @@ function registerAdminSistemaConfigRoutes(fastify, pool) {
     { preHandler: [fastify.authenticateAdmin, fastify.requirePermission('config:read')] },
     async () => {
       const { rows } = await pool.query(
-        'SELECT chave, valor, atualizado_em FROM configuracoes_sistema WHERE chave = ANY($1::text[]) ORDER BY chave',
+        "SELECT chave, valor, atualizado_em FROM configuracoes_sistema WHERE chave = ANY($1::text[]) AND produto = 'studio' ORDER BY chave",
         [CHAVES],
       );
       return { config: rows };
@@ -62,14 +62,19 @@ function registerAdminSistemaConfigRoutes(fastify, pool) {
         await client.query('BEGIN');
         for (const c of enviadas) {
           const valorNovo = String(corpo[c]);
+          // produto = 'studio': este portal (congelado, ver
+          // docs/admin-portal/) só geriu Studio antes do People ganhar
+          // configuração própria (kyvvo-studio#073) — sem o filtro, um
+          // UPDATE aqui bateria nas duas linhas (studio + people) e
+          // colapsaria o valor do People pro mesmo do Studio, silencioso.
           const { rows: antes } = await client.query(
-            'SELECT valor FROM configuracoes_sistema WHERE chave = $1 FOR UPDATE',
+            "SELECT valor FROM configuracoes_sistema WHERE chave = $1 AND produto = 'studio' FOR UPDATE",
             [c],
           );
           const valorAntes = antes[0] ? antes[0].valor : null;
           if (valorAntes === valorNovo) continue;
           await client.query(
-            'UPDATE configuracoes_sistema SET valor = $2, atualizado_em = now(), atualizado_por = $3 WHERE chave = $1',
+            "UPDATE configuracoes_sistema SET valor = $2, atualizado_em = now(), atualizado_por = $3 WHERE chave = $1 AND produto = 'studio'",
             [c, valorNovo, request.admin.adminId],
           );
           await registrarAuditoria(client, {
@@ -96,7 +101,7 @@ function registerAdminSistemaConfigRoutes(fastify, pool) {
       });
 
       const { rows } = await pool.query(
-        'SELECT chave, valor, atualizado_em FROM configuracoes_sistema WHERE chave = ANY($1::text[]) ORDER BY chave',
+        "SELECT chave, valor, atualizado_em FROM configuracoes_sistema WHERE chave = ANY($1::text[]) AND produto = 'studio' ORDER BY chave",
         [CHAVES],
       );
       return { config: rows };
