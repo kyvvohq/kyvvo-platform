@@ -28,6 +28,7 @@ const { registerAdminVisaoGeralRoutes } = require('./routes/admin/visao-geral');
 const { registerAdminSistemaRoutes } = require('./routes/admin/sistema');
 const { registerAdminSistemaAdminsRoutes } = require('./routes/admin/sistema-admins');
 const { registerAdminSistemaConfigRoutes } = require('./routes/admin/sistema-config');
+const { registerAdminNumerosProntosRoutes } = require('./routes/admin/numeros-prontos');
 const jwtRs256 = require('./lib/jwt-rs256');
 
 const PORT = process.env.PORT || 3003;
@@ -60,6 +61,7 @@ function build() {
   registerAdminSistemaRoutes(fastify, pool);
   registerAdminSistemaAdminsRoutes(fastify, pool);
   registerAdminSistemaConfigRoutes(fastify, pool);
+  registerAdminNumerosProntosRoutes(fastify, pool);
 
   // Estáticos: /ds/ (Design System, mesmo padrão do Studio) e /admin/ (a SPA
   // buildada). @fastify/static só decora reply.sendFile uma vez — as demais

@@ -13,6 +13,7 @@ import { Assinaturas as PlataformaAssinaturas } from './pages/plataforma/Assinat
 import { Numeros as WhatsappNumeros } from './pages/whatsapp/Numeros';
 import { Eventos as WhatsappEventos } from './pages/whatsapp/Eventos';
 import { IaUso as WhatsappIaUso } from './pages/whatsapp/IaUso';
+import { NumerosProntos as WhatsappNumerosProntos } from './pages/whatsapp/NumerosProntos';
 import { Templates as CampanhasTemplates } from './pages/campanhas/Templates';
 import { TemplateEditor } from './pages/campanhas/TemplateEditor';
 import { Disparos as CampanhasDisparos } from './pages/campanhas/Disparos';
@@ -100,6 +101,14 @@ export function App() {
           element={
             <RequirePerm perm="whatsapp:read">
               <WhatsappIaUso />
+            </RequirePerm>
+          }
+        />
+        <Route
+          path="/whatsapp/numeros-prontos"
+          element={
+            <RequirePerm perm="whatsapp:read">
+              <WhatsappNumerosProntos />
             </RequirePerm>
           }
         />
