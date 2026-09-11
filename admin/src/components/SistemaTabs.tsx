@@ -16,6 +16,11 @@ export function SistemaTabs() {
           Feature flags
         </NavLink>
       )}
+      {pode('config:read') && (
+        <NavLink to="/sistema/config" className={cls}>
+          Configurações
+        </NavLink>
+      )}
       {pode('admin:manage') && (
         <NavLink to="/sistema/admins" className={cls}>
           Admins
