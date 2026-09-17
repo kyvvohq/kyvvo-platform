@@ -30,6 +30,11 @@ const MODULOS_TRIAL = ['agenda_inteligente', 'financeiro', 'dashboards'];
 // do Studio. O bloqueio de funcionalidades até fechar uma licença é feito no
 // kyvvo-people (checa a própria tabela `assinaturas`), não aqui.
 const MODULOS_PEOPLE = ['people'];
+// Mesmo padrão pro CRM (produto:'crm'). Plano/preço/trial do CRM ainda não
+// foram decididos (doc de instruções do projeto, seção 11) — por ora a conta
+// nasce 'ativo' sem trial, igual ao People; reveja se o CRM ganhar um modelo
+// de cobrança próprio (ver kyvvo-crm/docs/DECISOES-PENDENTES.md #2).
+const MODULOS_CRM = ['crm'];
 const TERMOS_VERSAO = '2026-07-22';
 const PRIVACIDADE_VERSAO = '2026-07-22';
 
@@ -121,6 +126,13 @@ function registerAuthRoutes(fastify, pool) {
   fastify.get(
     '/api/auth/people/acesso',
     { preHandler: [fastify.authenticate, fastify.requireModulo('people')] },
+    async (request) => ({ tenantId: request.user.tenantId })
+  );
+
+  // Mesma checagem pro Kyvvo CRM.
+  fastify.get(
+    '/api/auth/crm/acesso',
+    { preHandler: [fastify.authenticate, fastify.requireModulo('crm')] },
     async (request) => ({ tenantId: request.user.tenantId })
   );
 
@@ -236,7 +248,7 @@ function registerAuthRoutes(fastify, pool) {
       plano_slug: planoSlugBruto,
       produto: produtoBruto,
     } = request.body || {};
-    const produto = produtoBruto === 'people' ? 'people' : 'studio';
+    const produto = produtoBruto === 'people' || produtoBruto === 'crm' ? produtoBruto : 'studio';
 
     const nomeEmpresaLimpo = (nomeEmpresa || '').trim();
     const nomeLimpo = (nomeResponsavel || '').trim();
@@ -322,23 +334,26 @@ function registerAuthRoutes(fastify, pool) {
     try {
       await client.query('BEGIN');
 
-      // People não tem trial (decisão de produto, ver MODULOS_PEOPLE acima):
-      // status nasce 'ativo' e sem trial_expires_at — o bloqueio até fechar
-      // uma licença é responsabilidade do kyvvo-people, via a própria
-      // assinatura dele, não deste `status` (que aqui é só "a conta existe").
-      const statusInicial = produto === 'people' ? 'ativo' : 'trial';
-      const trialExpira = produto === 'people'
+      // People/CRM não têm trial (decisão de produto pro People, 2026-08-30;
+      // mesma lógica aplicada ao CRM por ora — ver MODULOS_CRM acima e
+      // kyvvo-crm/docs/DECISOES-PENDENTES.md #2 se isso mudar): status nasce
+      // 'ativo' e sem trial_expires_at — o bloqueio até fechar uma licença é
+      // responsabilidade do serviço do produto (assinatura própria), não
+      // deste `status` (que aqui é só "a conta existe").
+      const semTrial = produto === 'people' || produto === 'crm';
+      const statusInicial = semTrial ? 'ativo' : 'trial';
+      const trialExpira = semTrial
         ? null
         : new Date(Date.now() + configSistema.config.trialDias * 24 * 60 * 60 * 1000).toISOString();
       const { rows: tenantRows } = await client.query(
         `INSERT INTO tenants (nome, telefone, whatsapp, segmento, segmento_id, plano, status, trial_expires_at, onboarding_pendente)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING id`,
-        [nomeEmpresaLimpo, telefone, whatsapp, segmentoSlug, segmentoId, produto === 'people' ? planoChave : (planoChave || 'trial'), statusInicial, trialExpira, onboardingPendente]
+        [nomeEmpresaLimpo, telefone, whatsapp, segmentoSlug, segmentoId, semTrial ? planoChave : (planoChave || 'trial'), statusInicial, trialExpira, onboardingPendente]
       );
       const tenantId = tenantRows[0].id;
 
-      const modulosIniciais = produto === 'people' ? MODULOS_PEOPLE : MODULOS_TRIAL;
+      const modulosIniciais = produto === 'people' ? MODULOS_PEOPLE : produto === 'crm' ? MODULOS_CRM : MODULOS_TRIAL;
       await client.query(
         `INSERT INTO tenant_modulos (tenant_id, modulo_key, ativo)
          SELECT $1, key, true FROM modulos WHERE key = ANY($2::text[])
