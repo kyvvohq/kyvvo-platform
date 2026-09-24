@@ -9,11 +9,22 @@ const {
 const ENV_PADRAO = {
   PEOPLE_PHONE_NUMBER_ID: '111222333',
   PEOPLE_WEBHOOK_URL: 'https://people.kyvvo.com.br/people/webhooks/whatsapp',
+  CRM_PHONE_NUMBER_ID: '444555666',
+  CRM_WEBHOOK_URL: 'https://crm.kyvvo.com.br/crm/api/webhook/whatsapp',
   STUDIO_WEBHOOK_URL: 'https://studio.kyvvo.com.br/webhook/whatsapp',
 };
 
 test('decidirDestino: phone_number_id do People -> URL do People', () => {
   assert.equal(decidirDestino('111222333', ENV_PADRAO), ENV_PADRAO.PEOPLE_WEBHOOK_URL);
+});
+
+test('decidirDestino: phone_number_id do CRM -> URL do CRM', () => {
+  assert.equal(decidirDestino('444555666', ENV_PADRAO), ENV_PADRAO.CRM_WEBHOOK_URL);
+});
+
+test('decidirDestino: sem CRM_PHONE_NUMBER_ID configurado, tudo cai no Studio (nunca confunde com CRM por acidente)', () => {
+  const env = { ...ENV_PADRAO, CRM_PHONE_NUMBER_ID: undefined };
+  assert.equal(decidirDestino('444555666', env), ENV_PADRAO.STUDIO_WEBHOOK_URL);
 });
 
 test('decidirDestino: qualquer outro phone_number_id (tenant do Studio) -> URL do Studio', () => {
