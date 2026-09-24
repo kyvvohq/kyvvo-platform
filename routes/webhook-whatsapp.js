@@ -29,9 +29,15 @@ function extrairPhoneNumberId(body) {
 
 // Pura — separada do handler pra testar sem subir o Fastify. `env` é
 // process.env por padrão, injetável pra teste sem mexer no processo real.
+// CRM (2026-09-24): número dedicado ao bot da Basic 3D Print — mesmo
+// raciocínio do People (produto com número(s) fixo(s) fora do pool de
+// tenants do Studio), checado antes do fallback pro Studio.
 function decidirDestino(phoneNumberId, env = process.env) {
   if (phoneNumberId && env.PEOPLE_PHONE_NUMBER_ID && phoneNumberId === env.PEOPLE_PHONE_NUMBER_ID) {
     return env.PEOPLE_WEBHOOK_URL || null;
+  }
+  if (phoneNumberId && env.CRM_PHONE_NUMBER_ID && phoneNumberId === env.CRM_PHONE_NUMBER_ID) {
+    return env.CRM_WEBHOOK_URL || null;
   }
   return env.STUDIO_WEBHOOK_URL || null;
 }
