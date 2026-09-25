@@ -69,12 +69,28 @@ jobs:
           source: ".npmrc,index.js,package.json,package-lock.json,version.json,token-service.js,asaas-service.js,lib/**,routes/**,db/**,scripts/**,admin/dist/**"
           target: "/opt/kyvvo/platform"
 
-      - name: Regenerar env do SSM + recriar container
+      # Health check (2026-09-25): sem isso, "o deploy rodou" só confirmava
+      # que o container foi recriado, nunca que o npm install/app dentro
+      # dele realmente subiu — cada checagem precisava de um round-trip
+      # manual no CloudShell (docker logs + curl). Agora falha o job (com
+      # os logs já impressos aqui) se /health não responder em ~30s.
+      - name: Regenerar env do SSM + recriar container + checar saúde
         uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ steps.sshkey.outputs.value }}
           script: |
+            set -e
             sudo /opt/kyvvo/scripts/gen-env-from-ssm.sh
             cd /opt/kyvvo && sudo docker compose up -d --force-recreate platform
+            for i in $(seq 1 15); do
+              if curl -sf http://127.0.0.1:3003/health > /dev/null; then
+                echo "OK: /health respondeu na tentativa ${i} (~$((i * 2))s)."
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "::error::/health não respondeu depois de ~30s — logs do container:"
+            sudo docker logs kyvvo-platform-1 --tail 80
+            exit 1
