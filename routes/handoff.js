@@ -28,13 +28,22 @@ function criarArmazenamentoHandoff() {
     }
   }
 
-  function criar({ tenantId, userId, email, nome }) {
+  // outrosProdutos (bug real em produção, 2026-09-30): quem gera o código já
+  // manda pronta a lista de outros produtos do PONTO DE VISTA DO DESTINO
+  // (CRM/People não conseguem montar isso sozinhos ao consumir o handoff —
+  // não têm o token RS256 do platform naquele momento pra consultar
+  // /entitlements como fazem num login normal) — o platform só guarda e
+  // devolve de volta, sem entender/validar o formato.
+  function criar({ tenantId, userId, email, nome, outrosProdutos }) {
     if (!tenantId || !email) {
       throw new Error('tenantId e email são obrigatórios');
     }
     limparExpirados();
     const code = crypto.randomBytes(24).toString('hex');
-    codigos.set(code, { payload: { tenantId, userId: userId || null, email, nome: nome || null }, expiraEm: Date.now() + CODIGO_TTL_MS });
+    codigos.set(code, {
+      payload: { tenantId, userId: userId || null, email, nome: nome || null, outrosProdutos: outrosProdutos || [] },
+      expiraEm: Date.now() + CODIGO_TTL_MS,
+    });
     return code;
   }
 

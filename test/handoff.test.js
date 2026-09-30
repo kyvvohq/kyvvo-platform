@@ -25,14 +25,22 @@ describe('criarArmazenamentoHandoff — criar/verificar', () => {
     assert.equal(typeof code, 'string');
     assert.ok(code.length >= 32);
     const payload = armazenamento.verificar(code);
-    assert.deepEqual(payload, { tenantId: 't1', userId: 'u1', email: 'dona@salao.com', nome: 'Ana' });
+    assert.deepEqual(payload, { tenantId: 't1', userId: 'u1', email: 'dona@salao.com', nome: 'Ana', outrosProdutos: [] });
   });
 
   test('userId/nome ausentes viram null (produto que não manda esses campos)', () => {
     const armazenamento = criarArmazenamentoHandoff();
     const code = armazenamento.criar({ tenantId: 't1', email: 'dona@salao.com' });
     const payload = armazenamento.verificar(code);
-    assert.deepEqual(payload, { tenantId: 't1', userId: null, email: 'dona@salao.com', nome: null });
+    assert.deepEqual(payload, { tenantId: 't1', userId: null, email: 'dona@salao.com', nome: null, outrosProdutos: [] });
+  });
+
+  test('outrosProdutos repassado tal como veio (quem gerou o código já manda pronto, do ponto de vista do destino)', () => {
+    const armazenamento = criarArmazenamentoHandoff();
+    const lista = [{ chave: 'studio', nome: 'Studio', url: 'https://studio.kyvvo.com.br' }];
+    const code = armazenamento.criar({ tenantId: 't1', email: 'dona@salao.com', outrosProdutos: lista });
+    const payload = armazenamento.verificar(code);
+    assert.deepEqual(payload.outrosProdutos, lista);
   });
 
   test('tenantId ausente lança erro', () => {
