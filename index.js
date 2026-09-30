@@ -14,6 +14,7 @@ const { registrarGuards } = require('./lib/auth-guards');
 const { registrarGuardsAdmin } = require('./lib/admin-rbac');
 const { registerAuthRoutes } = require('./routes/auth');
 const { registerEntitlementsRoutes } = require('./routes/entitlements');
+const { registerHandoffRoutes } = require('./routes/handoff');
 const { registerPagamentosRoutes } = require('./routes/pagamentos');
 const { registerWebhookWhatsappRoutes } = require('./routes/webhook-whatsapp');
 const { registerAdminAuthRoutes } = require('./routes/admin/auth');
@@ -46,6 +47,7 @@ function build() {
   registrarGuards(fastify, pool);
   registrarGuardsAdmin(fastify, pool);
   registerEntitlementsRoutes(fastify, pool);
+  registerHandoffRoutes(fastify);
   registerAuthRoutes(fastify, pool);
   registerPagamentosRoutes(fastify, pool);
   registerWebhookWhatsappRoutes(fastify, pool);
