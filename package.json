@@ -9,6 +9,7 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.700.0",
     "@kyvvohq/asaas": "^1.0.0",
     "@kyvvohq/db-migrate": "^1.0.0",
     "@kyvvohq/design-system": "^2.5.0",

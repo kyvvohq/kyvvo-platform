@@ -52,7 +52,12 @@ npm test    # funções puras + crypto; só precisa de `jsonwebtoken`, sem DB
 | `PLATFORM_JWT_PRIVATE_KEY` / `PLATFORM_JWT_PUBLIC_KEY` | par RS256 — PEM cru **ou** `base64 -w0` do PEM (em prod é base64, porque `env_file`/`gen-env-from-ssm.sh` não aceitam valor multi-linha) |
 | `PLATFORM_JWT_ISSUER` | default `https://auth.kyvvo.com.br` |
 | `PLATFORM_JWT_ACCESS_TTL` | default `15m` |
-| `RESEND_API_KEY` / `RESEND_FROM` | e-mail dos códigos de verificação (opcional; sem isso, modo log) |
+| `EMAIL_PROVIDER` | `ses` \| `resend` \| `log`. Sem valor: `resend` se houver `RESEND_API_KEY`, senão `log` |
+| `SES_REGION` / `SES_CONFIGURATION_SET` | SES (default `us-east-1`); credenciais pela role da instância EC2 |
+| `SES_SNS_TOPIC_ARN` | tópico SNS aceito em `/webhook/ses` (sem isso, o webhook recusa tudo) |
+| `INTERNAL_EMAIL_TOKENS` | `studio:tok,people:tok,crm:tok,admin:tok` — token por produto pro `/internal/email/send` |
+| `EMAIL_FROM` / `EMAIL_FROM_<PRODUTO>` | remetente (default `Kyvvo <no-reply@kyvvo.com.br>`; só domínio `kyvvo.com.br`) |
+| `RESEND_API_KEY` / `RESEND_FROM` | fallback da transição pro SES (opcional) |
 | `META_WHATSAPP_TOKEN` / `META_PHONE_NUMBER_ID` | WhatsApp dos códigos (opcional) |
 | `ASAAS_ENV` / `ASAAS_API_KEY_*` / `ASAAS_WEBHOOK_TOKEN` | billing (`@kyvvohq/asaas`); sem chave = modo log |
 | `PORT` | default `3003` |
@@ -64,3 +69,25 @@ Mesmo padrão dos outros apps Kyvvo: imagem `node:20-alpine` crua + bind mount
 `/opt/kyvvo/platform` + `gen-env-from-ssm.sh` + `docker compose up -d --force-recreate
 platform`. Falta: DNS `auth.kyvvo.com.br`, bloco nginx, serviço no compose,
 params no SSM, secrets `EC2_*` + `NPM_PACKAGES_TOKEN` neste repo.
+
+## Serviço de e-mail (SES)
+
+Todos os produtos mandam e-mail pelo platform — um remetente verificado, um
+log (`platform.email_envios`) e uma lista de supressão
+(`platform.email_supressoes`).
+
+```
+POST http://platform:3003/internal/email/send
+X-Internal-Token: <token do produto em INTERNAL_EMAIL_TOKENS>
+{ "to": "a@b.com" | ["a@b.com", ...], "subject": "...", "html": "...", "text": "...",
+  "replyTo": "...", "fromName": "Salão da Ana", "tag": "convite_equipe" }
+-> 200 { ok: true, resultados: [{ to, status: "enviado", messageId }] }
+   400 payload inválido · 401 token · 502 algum destinatário falhou/suprimido
+```
+
+O produto é deduzido do token (não do corpo). `fromName` troca só o nome de
+exibição; o endereço é sempre `EMAIL_FROM_<PRODUTO>`/`EMAIL_FROM`.
+
+`POST /webhook/ses` recebe os eventos do configuration set via SNS (assinatura
+verificada, `TopicArn` == `SES_SNS_TOPIC_ARN`): bounce permanente e reclamação
+entram na supressão; entrega/bounce/reclamação atualizam `email_envios.status`.

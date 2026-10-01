@@ -7,6 +7,7 @@ const fastifyStatic = require('@fastify/static');
 
 const { pool, migrar } = require('./lib/db');
 const tokenService = require('./token-service');
+const email = require('./lib/email');
 const configSistema = require('./lib/configuracoes-sistema');
 const eventos = require('./lib/eventos');
 const planos = require('./lib/planos');
@@ -17,6 +18,7 @@ const { registerEntitlementsRoutes } = require('./routes/entitlements');
 const { registerHandoffRoutes } = require('./routes/handoff');
 const { registerPagamentosRoutes } = require('./routes/pagamentos');
 const { registerWebhookWhatsappRoutes } = require('./routes/webhook-whatsapp');
+const { registerEmailRoutes } = require('./routes/email');
 const { registerAdminAuthRoutes } = require('./routes/admin/auth');
 const { registerAdminClientesRoutes } = require('./routes/admin/clientes');
 const { registerAdminUsuariosRoutes } = require('./routes/admin/usuarios');
@@ -40,6 +42,7 @@ function build() {
   // Mesmo padrão `init(pool)` do painel — os módulos compartilham o pool do
   // processo em vez de abrir conexão própria.
   tokenService.init(pool);
+  email.init(pool);
   configSistema.init(pool);
   eventos.init(pool);
   planos.init(pool);
@@ -51,6 +54,7 @@ function build() {
   registerAuthRoutes(fastify, pool);
   registerPagamentosRoutes(fastify, pool);
   registerWebhookWhatsappRoutes(fastify, pool);
+  registerEmailRoutes(fastify, pool);
   registerAdminAuthRoutes(fastify, pool);
   registerAdminClientesRoutes(fastify, pool);
   registerAdminUsuariosRoutes(fastify, pool);
