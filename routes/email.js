@@ -112,6 +112,7 @@ function registerEmailRoutes(fastify, pool, deps = {}) {
       replyTo: b.replyTo,
       fromName: b.fromName,
       tag: b.tag,
+      layout: b.layout,
     });
     if (resultado.erro) return reply.code(400).send({ error: resultado.erro });
     return reply.code(resultado.ok ? 200 : 502).send(resultado);
