@@ -62,6 +62,10 @@ async function enviarTokenEmail(email, token, nome) {
     tag: 'token_verificacao',
     to: email,
     subject: `Seu código de verificação Kyvvo — ${token}`,
+    // Textos editáveis no admin (E-mail > Modelos); o layout abaixo é o
+    // fallback se o modelo estiver inativo/indisponível.
+    modelo: 'token_verificacao',
+    variaveis: { codigo: token, minutos: TOKEN_EXPIRACAO_MINUTOS, nome: nome || '' },
     layout: {
       tipo: 'seguranca',
       titulo: 'Seu código de verificação',

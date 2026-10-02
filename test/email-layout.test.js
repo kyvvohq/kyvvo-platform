@@ -71,3 +71,51 @@ describe('lib/email com layout', () => {
     assert.match(r.erro, /tipo inválido/);
   });
 });
+
+describe('email-modelos', () => {
+  const modelos = require('../lib/email-modelos');
+
+  test('substituir: variável, padrão e desconhecida', () => {
+    assert.equal(modelos.substituir('Olá, {{nome}}!', { nome: 'Ana' }), 'Olá, Ana!');
+    assert.equal(modelos.substituir('Olá, {{ nome | tudo bem? }}!', { nome: ' ' }), 'Olá, tudo bem?!');
+    assert.equal(modelos.substituir('{{x}}-{{y|b}}', {}), '-b');
+  });
+
+  test('aplicarModelo: textos do modelo + dinâmico do produto; botão só com url', () => {
+    const m = { tipo: 'convite', assunto: '{{quem}} te convidou', titulo: 'Convite p/ {{empresa}}', corpo: 'Oi {{nome|você}}', cta_texto: 'Aceitar', motivo: 'Expira em {{dias}} dias' };
+    const r = modelos.aplicarModelo(m, { layout: { cta: { texto: 'x', url: 'https://a/b' }, detalhes: [{ rotulo: 'A', valor: 'b' }] }, variaveis: { quem: 'Ju', empresa: 'Salão', dias: 7 } });
+    assert.equal(r.assunto, 'Ju te convidou');
+    assert.equal(r.layout.titulo, 'Convite p/ Salão');
+    assert.equal(r.layout.corpoTexto, 'Oi você');
+    assert.deepEqual(r.layout.cta, { texto: 'Aceitar', url: 'https://a/b' });
+    assert.equal(r.layout.motivo, 'Expira em 7 dias');
+    assert.equal(r.layout.detalhes.length, 1);
+    assert.equal(modelos.aplicarModelo(m, {}).layout.cta, undefined);
+  });
+
+  test('rodapé usa a configuração editável', () => {
+    const { text } = renderizarEmail('studio', { tipo: 'notificacao', titulo: 't', notificacao: 'X' }, {
+      rodape_notificacao: 'Alerta {{notificacao}} ligado.', rodape_desativar: 'Desligue em {{caminho}} quando quiser.',
+      caminho_notificacoes_studio: 'Menu A', caminho_notificacoes_studio_url: 'https://s/x', rodape_nao_responda: 'Não responda.',
+    });
+    assert.match(text, /Alerta X ligado\./);
+    assert.match(text, /Desligue em Menu A \(https:\/\/s\/x\) quando quiser\./);
+    assert.match(text, /Não responda\./);
+  });
+
+  test('enviar com modelo: textos do modelo; sem modelo ativo, usa o layout do produto', async () => {
+    const dados = {
+      config: modelos.CONFIG_PADRAO,
+      modelos: new Map([['studio:convite_equipe', { tipo: 'convite', assunto: 'Assunto {{empresa}}', titulo: 'T {{empresa}}', corpo: 'C', cta_texto: 'Ir', motivo: null }]]),
+    };
+    let input;
+    const deps = { env: { EMAIL_PROVIDER: 'ses' }, pool: null, modelos: dados, sesSend: async (i) => { input = i; return { MessageId: 'm' }; } };
+    await email.enviar({ produto: 'studio', to: 'a@b.com', subject: 'fallback', modelo: 'convite_equipe', variaveis: { empresa: 'Salão' }, layout: { tipo: 'convite', titulo: 'x', cta: { texto: 'y', url: 'https://l' } } }, deps);
+    assert.equal(input.Content.Simple.Subject.Data, 'Assunto Salão');
+    assert.match(input.Content.Simple.Body.Text.Data, /T Salão/);
+    assert.match(input.Content.Simple.Body.Text.Data, /Ir: https:\/\/l/);
+    await email.enviar({ produto: 'crm', to: 'a@b.com', subject: 'fallback', modelo: 'inexistente', layout: { tipo: 'aviso', titulo: 'Layout do produto' } }, deps);
+    assert.equal(input.Content.Simple.Subject.Data, 'fallback');
+    assert.match(input.Content.Simple.Body.Text.Data, /Layout do produto/);
+  });
+});
