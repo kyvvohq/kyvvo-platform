@@ -118,4 +118,12 @@ describe('email-modelos', () => {
     assert.equal(input.Content.Simple.Subject.Data, 'fallback');
     assert.match(input.Content.Simple.Body.Text.Data, /Layout do produto/);
   });
+
+  test('modelo da plataforma vale pra qualquer produto sem modelo próprio', async () => {
+    const dados = { config: modelos.CONFIG_PADRAO, modelos: new Map([['platform:token_verificacao', { tipo: 'seguranca', assunto: 'Código {{codigo}}', titulo: 'Código', corpo: '', cta_texto: null, motivo: null }]]) };
+    let input;
+    await email.enviar({ produto: 'studio', to: 'a@b.com', subject: 'x', modelo: 'token_verificacao', variaveis: { codigo: '1' }, layout: { tipo: 'seguranca', titulo: 'x', destaque: '1' } },
+      { env: { EMAIL_PROVIDER: 'ses' }, pool: null, modelos: dados, sesSend: async (i) => { input = i; return { MessageId: 'm' }; } });
+    assert.equal(input.Content.Simple.Subject.Data, 'Código 1');
+  });
 });
