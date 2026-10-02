@@ -4,10 +4,11 @@ const { renderizarEmail, validarLayout, textoParaHtml } = require('../lib/email-
 const email = require('../lib/email');
 
 describe('email-layout', () => {
-  test('validarLayout: tipo, título e cta https obrigatórios', () => {
+  test('validarLayout: tipo e título obrigatórios; cta não-https é descartado, não recusado', () => {
     assert.match(validarLayout({ tipo: 'x', titulo: 'a' }), /tipo inválido/);
     assert.match(validarLayout({ tipo: 'aviso' }), /titulo/);
-    assert.match(validarLayout({ tipo: 'aviso', titulo: 'a', cta: { texto: 'ir', url: 'javascript:alert(1)' } }), /https/);
+    assert.equal(validarLayout({ tipo: 'aviso', titulo: 'a', cta: { texto: 'ir', url: 'javascript:alert(1)' } }), null);
+    assert.doesNotMatch(renderizarEmail('studio', { tipo: 'aviso', titulo: 'a', cta: { texto: 'ir', url: 'javascript:alert(1)' } }).html, /javascript:/);
     assert.equal(validarLayout({ tipo: 'notificacao', titulo: 'a', cta: { texto: 'ir', url: 'https://x' } }), null);
   });
 
