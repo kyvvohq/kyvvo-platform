@@ -62,7 +62,18 @@ async function enviarTokenEmail(email, token, nome) {
     tag: 'token_verificacao',
     to: email,
     subject: `Seu código de verificação Kyvvo — ${token}`,
-    html: emailHtml(token, nome),
+    // Textos editáveis no admin (E-mail > Modelos); o layout abaixo é o
+    // fallback se o modelo estiver inativo/indisponível.
+    modelo: 'token_verificacao',
+    variaveis: { codigo: token, minutos: TOKEN_EXPIRACAO_MINUTOS, nome: nome || '' },
+    layout: {
+      tipo: 'seguranca',
+      titulo: 'Seu código de verificação',
+      saudacao: nome ? `Olá, ${nome}!` : 'Olá!',
+      paragrafos: [`Use o código abaixo para confirmar seu acesso. Ele expira em ${TOKEN_EXPIRACAO_MINUTOS} minutos.`],
+      destaque: token,
+      motivo: 'Se não foi você quem pediu este código, ignore este e-mail e não o compartilhe com ninguém.',
+    },
   });
   if (r.resultados.some((x) => x.status === 'log')) {
     console.log(`[token-service] (dev) e-mail para ${email} — código: ${token}`);
@@ -119,26 +130,6 @@ async function enviarTokenWhatsapp(whatsappNacional, token) {
 
   console.log(`[token-service] (dev) WhatsApp para 55${whatsappNacional} — código: ${token}`);
   return false;
-}
-
-function emailHtml(token, nome) {
-  const saudacao = nome ? `Olá, ${nome}!` : 'Olá!';
-  return `
-  <div style="font-family:Arial,Helvetica,sans-serif;background:#080b14;padding:32px;color:#f2f2f7">
-    <div style="max-width:420px;margin:0 auto;background:#12162a;border:1px solid #232847;border-radius:16px;padding:32px">
-      <div style="font-size:22px;font-weight:800;letter-spacing:-.03em;margin-bottom:24px">
-        ky<span style="color:#a688ff">vv</span>o
-      </div>
-      <h1 style="font-size:18px;margin:0 0 12px">${saudacao} Aqui está seu código de verificação</h1>
-      <div style="font-size:34px;font-weight:800;letter-spacing:8px;text-align:center;color:#a688ff;margin:0 0 24px">
-        ${token}
-      </div>
-      <p style="color:#a1a5c4;font-size:12px;line-height:1.6;margin:0">
-        O código expira em ${TOKEN_EXPIRACAO_MINUTOS} minutos. Se não foi você quem solicitou, ignore este
-        e-mail e não compartilhe este código com ninguém.
-      </p>
-    </div>
-  </div>`;
 }
 
 // Gera o token e persiste em `tokens_validacao` (CA01), invalidando qualquer

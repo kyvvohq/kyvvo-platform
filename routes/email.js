@@ -12,6 +12,8 @@
 
 const crypto = require('crypto');
 const email = require('../lib/email');
+const emailLayout = require('../lib/email-layout');
+const emailModelos = require('../lib/email-modelos');
 const sns = require('../lib/sns');
 
 // "studio:abc,people:def" -> Map(token -> produto)
@@ -112,9 +114,34 @@ function registerEmailRoutes(fastify, pool, deps = {}) {
       replyTo: b.replyTo,
       fromName: b.fromName,
       tag: b.tag,
+      layout: b.layout,
+      modelo: b.modelo,
+      variaveis: b.variaveis,
+      // Só o admin manda em nome de outro produto (botão "enviar teste" de
+      // um modelo do Studio/People/CRM).
+      produtoModelo: produto === 'admin' ? b.produto : undefined,
     });
     if (resultado.erro) return reply.code(400).send({ error: resultado.erro });
     return reply.code(resultado.ok ? 200 : 502).send(resultado);
+  });
+
+  // Prévia pro editor do admin: renderiza um modelo (rascunho ainda não
+  // salvo, vindo no corpo) com as variáveis de exemplo. Só token do admin.
+  fastify.post('/internal/email/preview', async (request, reply) => {
+    if (produtoDoToken(request.headers['x-internal-token']) !== 'admin') {
+      return reply.code(401).send({ error: 'Não autenticado' });
+    }
+    const b = request.body || {};
+    const produtoAlvo = b.produto || 'platform';
+    if (!emailLayout.PRODUTOS[produtoAlvo]) return reply.code(400).send({ error: 'produto inválido' });
+    if (!b.modelo || typeof b.modelo !== 'object') return reply.code(400).send({ error: 'modelo obrigatório' });
+    const dados = await emailModelos.carregar(pool);
+    const config = { ...dados.config, ...(b.config || {}) };
+    const { assunto, layout } = emailModelos.aplicarModelo(b.modelo, { layout: b.layout || {}, variaveis: b.variaveis || {} });
+    const erro = emailLayout.validarLayout(layout);
+    if (erro) return reply.code(400).send({ error: erro });
+    const r = emailLayout.renderizarEmail(produtoAlvo, layout, config);
+    return { assunto, html: r.html, text: r.text };
   });
 
   fastify.post('/webhook/ses', async (request, reply) => {
