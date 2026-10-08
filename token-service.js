@@ -81,6 +81,40 @@ async function enviarTokenEmail(email, token, nome) {
   return r.ok && r.resultados.some((x) => x.status === 'enviado');
 }
 
+// Link de confirmação de e-mail por clique — variante do código de 6
+// dígitos acima (mesma tabela/validação, só muda o canal/apresentação):
+// usado quando o login é bloqueado por e-mail não verificado (ver
+// `routes/auth.js`, POST /api/auth/login + GET /api/auth/confirmar-email).
+// Diferente do fluxo de cadastro (US20/US21, código digitado), aqui o
+// usuário só clica — sem precisar copiar/digitar nada.
+const URL_PUBLICA_PLATFORM = process.env.PLATFORM_JWT_ISSUER || 'https://auth.kyvvo.com.br';
+
+async function enviarLinkConfirmacaoEmail(email, token, userId, nome, produto) {
+  const url = `${URL_PUBLICA_PLATFORM}/api/auth/confirmar-email?uid=${encodeURIComponent(userId)}&token=${token}&produto=${encodeURIComponent(produto || 'studio')}`;
+  const r = await emailService.enviar({
+    produto: produto || 'platform',
+    tag: 'confirmacao_email_link',
+    to: email,
+    subject: 'Confirme seu e-mail — Kyvvo',
+    // Textos editáveis no admin (E-mail > Modelos); o layout abaixo é o
+    // fallback se o modelo estiver inativo/indisponível.
+    modelo: 'confirmacao_email_link',
+    variaveis: { nome: nome || '' },
+    layout: {
+      tipo: 'seguranca',
+      titulo: 'Confirme seu e-mail',
+      saudacao: nome ? `Olá, ${nome}!` : 'Olá!',
+      paragrafos: ['Pra liberar o acesso à sua conta Kyvvo, confirme seu e-mail clicando no botão abaixo.'],
+      cta: { texto: 'Confirmar e-mail', url },
+      motivo: 'Se não foi você quem criou esta conta, ignore este e-mail.',
+    },
+  });
+  if (r.resultados.some((x) => x.status === 'log')) {
+    console.log(`[token-service] (dev) link de confirmação para ${email}: ${url}`);
+  }
+  return r.ok && r.resultados.some((x) => x.status === 'enviado');
+}
+
 // Envia o token por WhatsApp via API oficial da Meta (Cloud API), se
 // configurada. Espera o número nacional em dígitos e prefixa o DDI 55.
 async function enviarTokenWhatsappMeta(whatsappNacional, token) {

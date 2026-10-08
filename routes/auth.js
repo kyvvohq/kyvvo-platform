@@ -20,6 +20,85 @@ const jwtRs256 = require('../lib/jwt-rs256');
 
 const REENVIO_COOLDOWN_SEGUNDOS = 60;
 
+// Páginas (de produto) pra onde o link de confirmação devolve o usuário
+// depois de clicar — ver GET /api/auth/confirmar-email mais abaixo.
+const LOGIN_POR_PRODUTO = {
+  studio: 'https://studio.kyvvo.com.br/login',
+  people: 'https://people.kyvvo.com.br/people/login.html',
+  crm: 'https://crm.kyvvo.com.br/crm/login.html',
+};
+
+// Página de confirmação (sucesso ou erro) — mesmo visual dos logins dos 3
+// produtos (DS: Space Grotesk + Inter, cartão branco sobre #F8F9FC),
+// standalone (sem depender de /ds/ nem de JS) porque é servida direto pelo
+// platform, fora do contexto de qualquer produto.
+function paginaConfirmacaoEmail({ titulo, mensagem, linkUrl }) {
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${titulo} — Kyvvo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: light; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:32px 16px;
+    background:#F8F9FC; color:#0F111A; font-family:'Inter',Arial,Helvetica,sans-serif; }
+  .card { width:100%; max-width:400px; background:#FFFFFF; border:1px solid #E7EAF2; border-radius:16px; padding:32px; text-align:center; }
+  .marca-k { width:32px; height:32px; border-radius:9px; background:#0F111A; color:#fff; margin:0 auto 20px;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:19px; display:flex; align-items:center; justify-content:center; }
+  h1 { font-size:19px; margin:0 0 10px; font-family:'Space Grotesk',sans-serif; }
+  p { font-size:14px; color:#6B7086; margin:0 0 20px; line-height:1.5; }
+  a.btn { display:inline-block; background:#7C5CFC; color:#fff; font-weight:600; text-decoration:none;
+    border-radius:12px; padding:12px 24px; font-size:14px; }
+  a.btn:hover { background:#6344E8; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="marca-k">k</div>
+    <h1>${titulo}</h1>
+    <p>${mensagem}</p>
+    <a class="btn" href="${linkUrl}">Ir para o login</a>
+  </div>
+</body>
+</html>`;
+}
+
+// Dispara (best-effort, com o mesmo cooldown/limite do resend-token) um novo
+// e-mail de confirmação por LINK quando o login detecta e-mail não
+// verificado — ver POST /api/auth/login mais abaixo. Reaproveita
+// `tokens_validacao`/tipo 'email_verificacao', então soma no mesmo limite
+// horário do resend-token manual (não dá pra "somar" os dois canais e
+// estourar o rate-limit nem assim).
+async function reenviarConfirmacaoLink(pool, { userId, email, nome, produto }) {
+  const { rows: contagem } = await pool.query(
+    `SELECT COUNT(*)::int AS na_hora, MAX(criado_em) AS ultimo
+     FROM tokens_validacao
+     WHERE user_id = $1 AND tipo = 'email_verificacao' AND criado_em > now() - interval '1 hour'`,
+    [userId]
+  );
+  if (contagem[0].na_hora >= configSistema.config.maxReenviosHora) return;
+  if (contagem[0].ultimo && Date.now() - new Date(contagem[0].ultimo).getTime() < REENVIO_COOLDOWN_SEGUNDOS * 1000) return;
+
+  const client = await pool.connect();
+  let codigo;
+  try {
+    await client.query('BEGIN');
+    codigo = await tokenService.criarToken(client, { userId, tipo: 'email_verificacao' });
+    await client.query('COMMIT');
+  } catch (erro) {
+    await client.query('ROLLBACK');
+    throw erro;
+  } finally {
+    client.release();
+  }
+
+  tokenService.enviarLinkConfirmacaoEmail(email, codigo, userId, nome, produto);
+}
+
 // Módulos liberados automaticamente no trial (US77/CA09).
 const MODULOS_TRIAL = ['agenda_inteligente', 'financeiro', 'dashboards'];
 // Cadastro pelo People (produto:'people' no body) — produtos diferentes no
@@ -49,7 +128,7 @@ function assinarAcesso(usuario) {
 
 function registerAuthRoutes(fastify, pool) {
   fastify.post('/api/auth/login', async (request, reply) => {
-    const { email, senha } = request.body || {};
+    const { email, senha, produto } = request.body || {};
     if (!email || !senha) {
       return reply.code(400).send({ error: 'E-mail e senha são obrigatórios' });
     }
@@ -86,7 +165,62 @@ function registerAuthRoutes(fastify, pool) {
     pool.query('UPDATE usuarios SET ultimo_login_em = now() WHERE id = $1', [usuario.id])
       .catch((erro) => fastify.log.warn({ erro: erro.message, userId: usuario.id }, 'Falha ao gravar ultimo_login_em'));
 
+    // E-mail não verificado: o produto (CRM por ora — Studio/People ainda
+    // não mandam `produto` no login) bloqueia o acesso de qualquer jeito
+    // via `authenticate`, então já aproveita e dispara um novo link de
+    // confirmação — ninguém precisa pedir reenvio manualmente.
+    if (!usuario.email_verified) {
+      reenviarConfirmacaoLink(pool, { userId: usuario.id, email: usuario.email, nome: usuario.nome, produto })
+        .catch((erro) => fastify.log.warn({ erro: erro.message, userId: usuario.id }, 'Falha ao reenviar link de confirmação no login'));
+    }
+
     return { token, nome: usuario.nome, email: usuario.email, email_verified: usuario.email_verified, role: usuario.role };
+  });
+
+  // Confirmação de e-mail por clique (sem digitar código) — destino do `cta`
+  // do e-mail disparado em `reenviarConfirmacaoLink` acima. Rota pública (o
+  // clique vem de fora de qualquer sessão de produto): o próprio par
+  // (uid, token) É a prova de posse do e-mail, mesma validação do código
+  // digitado em POST /api/auth/verify-token.
+  fastify.get('/api/auth/confirmar-email', async (request, reply) => {
+    const { uid, token, produto } = request.query || {};
+    const destino = LOGIN_POR_PRODUTO[produto] || LOGIN_POR_PRODUTO.studio;
+    reply.type('text/html');
+
+    if (!uid || !token) {
+      return paginaConfirmacaoEmail({
+        titulo: 'Link inválido',
+        mensagem: 'Este link de confirmação está incompleto ou foi copiado errado.',
+        linkUrl: destino,
+      });
+    }
+
+    const { valido, motivo } = await tokenService.validate({ userId: uid, tipo: 'email_verificacao', token });
+    if (!valido) {
+      const mensagens = {
+        nao_encontrado: 'Nenhuma confirmação pendente para este link. Faça login novamente para receber um novo.',
+        expirado: 'Este link expirou. Faça login novamente para receber um novo.',
+        bloqueado: 'Número máximo de tentativas atingido. Faça login novamente para receber um novo link.',
+        incorreto: 'Link inválido.',
+      };
+      return paginaConfirmacaoEmail({
+        titulo: 'Não foi possível confirmar',
+        mensagem: mensagens[motivo] || mensagens.incorreto,
+        linkUrl: destino,
+      });
+    }
+
+    const { rows } = await pool.query('SELECT tenant_id FROM usuarios WHERE id = $1', [uid]);
+    if (rows[0]) {
+      await pool.query('UPDATE usuarios SET email_verified = true WHERE id = $1', [uid]);
+      await pool.query('UPDATE tenants SET ativado_em = COALESCE(ativado_em, now()) WHERE id = $1', [rows[0].tenant_id]);
+    }
+
+    return paginaConfirmacaoEmail({
+      titulo: 'E-mail confirmado!',
+      mensagem: 'Sua conta já está liberada. Você pode fazer login normalmente agora.',
+      linkUrl: destino,
+    });
   });
 
   // Renova o access token (TTL 15 min). Aceita um token ainda válido ou
