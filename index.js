@@ -19,6 +19,7 @@ const { registerEntitlementsRoutes } = require('./routes/entitlements');
 const { registerHandoffRoutes } = require('./routes/handoff');
 const { registerPagamentosRoutes } = require('./routes/pagamentos');
 const { registerPagamentosPeopleRoutes } = require('./routes/pagamentos-people');
+const { registerPagamentosCrmRoutes } = require('./routes/pagamentos-crm');
 const { registerWebhookWhatsappRoutes } = require('./routes/webhook-whatsapp');
 const { registerEmailRoutes } = require('./routes/email');
 const { registerAdminAuthRoutes } = require('./routes/admin/auth');
@@ -56,6 +57,7 @@ function build() {
   registerAuthRoutes(fastify, pool);
   registerPagamentosRoutes(fastify, pool);
   registerPagamentosPeopleRoutes(fastify, pool, peoplePool);
+  registerPagamentosCrmRoutes(fastify, pool);
   registerWebhookWhatsappRoutes(fastify, pool);
   registerEmailRoutes(fastify, pool);
   registerAdminAuthRoutes(fastify, pool);
