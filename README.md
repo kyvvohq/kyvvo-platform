@@ -19,7 +19,8 @@ nada deploya (o `deploy.yml` está dormente).
 | Sessão | `POST /api/auth/{login,logout,esqueci-senha,redefinir-senha,register,verify-token,resend-token,refresh}`, `GET /api/auth/people/acesso` — portado verbatim de `kyvvo/server/panel/routes/auth.js` (menos EOL; `register` só troca `fastify.jwt.sign`→RS256) |
 | JWT | RS256 (`lib/jwt-rs256.js`): assina com chave privada, `GET /.well-known/jwks.json`, access TTL 15 min, `POST /api/auth/refresh` |
 | Guards | `authenticate` / `requireModulo` / `requireAdmin` — portados de `server/panel/index.js`, só a verificação do token virou RS256 local |
-| Billing | `GET /api/pagamentos[/status]`, `POST /api/pagamentos/cadastrar`, `PATCH /api/pagamentos/plano`, `DELETE /api/pagamentos/assinatura`, `POST /webhooks/asaas` — cópia byte-a-byte de `server/panel/routes/pagamentos.js` + `lib/{planos,pagamentos}.js` + `asaas-service.js` (= `@kyvvohq/asaas`) |
+| Billing (Studio) | `GET /api/pagamentos[/status]`, `POST /api/pagamentos/cadastrar`, `PATCH /api/pagamentos/plano`, `DELETE /api/pagamentos/assinatura`, `POST /webhooks/asaas` — cópia byte-a-byte de `server/panel/routes/pagamentos.js` + `lib/{planos,pagamentos}.js` + `asaas-service.js` (= `@kyvvohq/asaas`). Corte concluído (nginx roteia `studio.kyvvo.com.br` pra cá, código antigo já removido do Studio) |
+| Billing (People) | `GET /people/api/pagamentos[/planos]`, `POST /people/api/pagamentos/cadastrar`, `PATCH /people/api/pagamentos/plano`, `DELETE /people/api/pagamentos/assinatura`, `POST /people/webhooks/asaas` — portado de `kyvvo-people/index.js`, mas o People guarda assinatura numa tabela própria (`assinaturas`, banco `kyvvo_people` separado — nunca esteve no schema `platform`) em vez de colunas em `tenants`; por isso usa uma 2ª connection pool (`PEOPLE_DATABASE_URL`, `lib/db-people.js`) e código próprio (`routes/pagamentos-people.js`) em vez de reaproveitar o do Studio |
 | Entitlements | `GET /entitlements/:tenantId` (JWT do próprio tenant), `GET /plans?produto=studio\|people`, `GET /health` |
 | Schema | `db/001_schema.sql` (identidade/sessão) + `db/002_billing.sql` (colunas asaas_*/endereco_*/cpf_cnpj/segmento*/onboarding de `tenants`, `segmentos`, `consentimentos_cadastro`) — schema `platform`, via `@kyvvohq/db-migrate` |
 
@@ -49,6 +50,7 @@ npm test    # funções puras + crypto; só precisa de `jsonwebtoken`, sem DB
 |---|---|
 | `DATABASE_URL` | Postgres (schema `platform`) |
 | `DB_SEARCH_PATH` | default `platform,public` |
+| `PEOPLE_DATABASE_URL` | banco **próprio** do kyvvo-people (`kyvvo_people`, mesmo host Postgres mas banco separado — nunca esteve no schema `platform`) — usado só pelas rotas `/people/api/pagamentos/*`/`/people/webhooks/asaas` (`lib/db-people.js`), que leem/escrevem a tabela `assinaturas` de lá |
 | `PLATFORM_JWT_PRIVATE_KEY` / `PLATFORM_JWT_PUBLIC_KEY` | par RS256 — PEM cru **ou** `base64 -w0` do PEM (em prod é base64, porque `env_file`/`gen-env-from-ssm.sh` não aceitam valor multi-linha) |
 | `PLATFORM_JWT_ISSUER` | default `https://auth.kyvvo.com.br` |
 | `PLATFORM_JWT_ACCESS_TTL` | default `15m` |

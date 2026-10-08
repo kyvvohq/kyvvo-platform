@@ -6,6 +6,7 @@ const Fastify = require('fastify');
 const fastifyStatic = require('@fastify/static');
 
 const { pool, migrar } = require('./lib/db');
+const { peoplePool } = require('./lib/db-people');
 const tokenService = require('./token-service');
 const email = require('./lib/email');
 const configSistema = require('./lib/configuracoes-sistema');
@@ -17,6 +18,7 @@ const { registerAuthRoutes } = require('./routes/auth');
 const { registerEntitlementsRoutes } = require('./routes/entitlements');
 const { registerHandoffRoutes } = require('./routes/handoff');
 const { registerPagamentosRoutes } = require('./routes/pagamentos');
+const { registerPagamentosPeopleRoutes } = require('./routes/pagamentos-people');
 const { registerWebhookWhatsappRoutes } = require('./routes/webhook-whatsapp');
 const { registerEmailRoutes } = require('./routes/email');
 const { registerAdminAuthRoutes } = require('./routes/admin/auth');
@@ -53,6 +55,7 @@ function build() {
   registerHandoffRoutes(fastify);
   registerAuthRoutes(fastify, pool);
   registerPagamentosRoutes(fastify, pool);
+  registerPagamentosPeopleRoutes(fastify, pool, peoplePool);
   registerWebhookWhatsappRoutes(fastify, pool);
   registerEmailRoutes(fastify, pool);
   registerAdminAuthRoutes(fastify, pool);
