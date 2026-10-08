@@ -99,14 +99,19 @@ function registerHandoffRoutes(fastify, pool) {
     }
     if (!emitirToken) return payload;
 
+    // Checagem de usuário/tenant ativo — o Studio já fazia isso na mão no
+    // /sso de origem (conta.js), antes de confiar no handoff; subida pra cá
+    // pra People e CRM ganharem a mesma proteção (nenhum dos dois checava —
+    // um handoff pra uma conta desativada depois de gerado o código entraria
+    // igual).
     const { rows } = await pool.query(
-      `SELECT u.id AS user_id, u.token_version
-       FROM usuarios u
+      `SELECT u.id AS user_id, u.token_version, u.ativo AS usuario_ativo, t.ativo AS tenant_ativo
+       FROM usuarios u JOIN tenants t ON t.id = u.tenant_id
        WHERE u.tenant_id = $1 AND u.email = $2`,
       [payload.tenantId, payload.email]
     );
     const usuario = rows[0];
-    if (!usuario) {
+    if (!usuario || !usuario.usuario_ativo || !usuario.tenant_ativo) {
       return reply.code(404).send({ error: 'Usuário não encontrado' });
     }
     const token = jwtRs256.sign({
