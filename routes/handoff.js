@@ -16,6 +16,7 @@
 // precisar sobreviver a um restart do processo, e evita migration só pra
 // isso. Pior caso de um restart no meio da janela: o usuário clica de novo.
 const crypto = require('crypto');
+const jwtRs256 = require('../lib/jwt-rs256');
 
 const CODIGO_TTL_MS = 30 * 1000;
 
@@ -63,7 +64,7 @@ function tokenInternoValido(headerRecebido, tokenEsperado) {
   return !!headerRecebido && !!tokenEsperado && headerRecebido === tokenEsperado;
 }
 
-function registerHandoffRoutes(fastify) {
+function registerHandoffRoutes(fastify, pool) {
   const armazenamento = criarArmazenamentoHandoff();
 
   fastify.decorate('autenticarInterno', async (request, reply) => {
@@ -82,12 +83,44 @@ function registerHandoffRoutes(fastify) {
     return { code };
   });
 
+  // `emitirToken` (opt-in, usado pelos 3 receptores de handoff — /sso do
+  // Studio, /people/sso, /crm/sso) — além do payload de sempre, busca
+  // token_version em usuarios/tenants (fonte canônica de identidade, mesmo
+  // quando o produto chamador tem seu próprio banco de negócio separado) e
+  // devolve um `token` RS256 pronto pra sessão, pra ninguém mais precisar
+  // assinar nada localmente (nenhum dos 3 tem mais @fastify/jwt depois do
+  // corte de sessão — e o /sso do Studio chamava um fastify.jwt.sign que já
+  // nem existia mais ali, 500 em produção; corrigido usando isto).
   fastify.post('/internal/handoff/verify', { preHandler: [fastify.autenticarInterno] }, async (request, reply) => {
-    const payload = armazenamento.verificar((request.body || {}).code);
+    const { code, emitirToken } = request.body || {};
+    const payload = armazenamento.verificar(code);
     if (!payload) {
       return reply.code(404).send({ error: 'Código inválido ou expirado' });
     }
-    return payload;
+    if (!emitirToken) return payload;
+
+    // Checagem de usuário/tenant ativo — o Studio já fazia isso na mão no
+    // /sso de origem (conta.js), antes de confiar no handoff; subida pra cá
+    // pra People e CRM ganharem a mesma proteção (nenhum dos dois checava —
+    // um handoff pra uma conta desativada depois de gerado o código entraria
+    // igual).
+    const { rows } = await pool.query(
+      `SELECT u.id AS user_id, u.token_version, u.ativo AS usuario_ativo, t.ativo AS tenant_ativo
+       FROM usuarios u JOIN tenants t ON t.id = u.tenant_id
+       WHERE u.tenant_id = $1 AND u.email = $2`,
+      [payload.tenantId, payload.email]
+    );
+    const usuario = rows[0];
+    if (!usuario || !usuario.usuario_ativo || !usuario.tenant_ativo) {
+      return reply.code(404).send({ error: 'Usuário não encontrado' });
+    }
+    const token = jwtRs256.sign({
+      userId: usuario.user_id,
+      tenantId: payload.tenantId,
+      email: payload.email,
+      tokenVersion: usuario.token_version,
+    });
+    return { ...payload, token };
   });
 }
 

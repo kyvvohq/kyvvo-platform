@@ -53,7 +53,7 @@ function build() {
   registrarGuards(fastify, pool);
   registrarGuardsAdmin(fastify, pool);
   registerEntitlementsRoutes(fastify, pool);
-  registerHandoffRoutes(fastify);
+  registerHandoffRoutes(fastify, pool);
   registerAuthRoutes(fastify, pool);
   registerPagamentosRoutes(fastify, pool);
   registerPagamentosPeopleRoutes(fastify, pool, peoplePool);
