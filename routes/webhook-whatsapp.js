@@ -18,6 +18,8 @@
 // cá) — o platform só decide PRA QUEM encaminhar, nunca processa a
 // mensagem. `X-Webhook-Internal-Secret` autentica o encaminhamento (o
 // endpoint de cada produto deixa de ser aberto pra Meta direto).
+const { produtoDoToken } = require('./email');
+
 // Extrai o phone_number_id do payload de webhook da Meta — undefined se o
 // evento não tiver mensagem (ex.: status "delivered"/"read"), mesmo shape
 // que o kyvvo-studio já usa (routes/webhook-whatsapp.js).
@@ -83,6 +85,36 @@ async function persistirEvento(pool, body, { phoneNumberId, destino }) {
 }
 
 function registerWebhookWhatsappRoutes(fastify, pool) {
+  // Diagnóstico pro portal admin (achado ao vivo, 2026-10-13: bot da Basic
+  // 3D Print sem responder, sem nenhuma pista de onde a mensagem parava —
+  // nenhuma tela mostrava se um evento da Meta sequer chegou aqui, nem pra
+  // onde foi encaminhado). Reaproveita o mesmo token admin já usado por
+  // /internal/email/preview (routes/email.js) — nenhum segredo novo.
+  fastify.get('/internal/whatsapp/eventos', async (request, reply) => {
+    if (produtoDoToken(request.headers['x-internal-token']) !== 'admin') {
+      return reply.code(401).send({ error: 'Não autorizado' });
+    }
+    if (!pool) return reply.code(503).send({ error: 'Banco indisponível' });
+    const { pnid } = request.query || {};
+    const limit = Math.min(Math.max(parseInt(request.query.limit, 10) || 20, 1), 100);
+    const params = [];
+    let where = '';
+    if (pnid) {
+      params.push(pnid);
+      where = 'WHERE phone_number_id = $1';
+    }
+    params.push(limit);
+    const { rows } = await pool.query(
+      `SELECT id, phone_number_id, tipo, destino, encaminhado, recebido_em
+         FROM whatsapp_webhook_events
+         ${where}
+        ORDER BY recebido_em DESC
+        LIMIT $${params.length}`,
+      params,
+    );
+    return { eventos: rows };
+  });
+
   fastify.get('/webhook/whatsapp', async (request, reply) => {
     const query = request.query || {};
     const valido = query['hub.mode'] === 'subscribe'
