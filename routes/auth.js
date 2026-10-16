@@ -5,10 +5,10 @@
 // não mudam de URL): POST /api/auth/{login,logout,esqueci-senha,
 // redefinir-senha,register,verify-token,resend-token}, GET
 // /api/auth/people/acesso. Novo aqui: POST /api/auth/refresh (o access token
-// agora dura 15 min).
+// agora dura 3h).
 //
 // Diferença de comportamento vs. o original: o token é assinado em RS256
-// (lib/jwt-rs256.js) com TTL de 15 min, no lugar do HS256 `7d` do
+// (lib/jwt-rs256.js) com TTL de 3h, no lugar do HS256 `7d` do
 // @fastify/jwt. Claims idênticos: { userId, tenantId, email, tokenVersion }.
 //
 const bcrypt = require('bcryptjs');
@@ -223,7 +223,7 @@ function registerAuthRoutes(fastify, pool) {
     });
   });
 
-  // Renova o access token (TTL 15 min). Aceita um token ainda válido ou
+  // Renova o access token (TTL 3h). Aceita um token ainda válido ou
   // vencido há pouco; re-checa token_version e `ativo` no banco (um logout ou
   // troca de senha feito nesse meio-tempo invalida a renovação).
   fastify.post('/api/auth/refresh', async (request, reply) => {
