@@ -62,6 +62,7 @@ npm test    # funções puras + crypto; só precisa de `jsonwebtoken`, sem DB
 | `RESEND_API_KEY` / `RESEND_FROM` | fallback da transição pro SES (opcional) |
 | `META_WHATSAPP_TOKEN` / `META_PHONE_NUMBER_ID` | WhatsApp dos códigos (opcional) |
 | `ASAAS_ENV` / `ASAAS_API_KEY_*` / `ASAAS_WEBHOOK_TOKEN` | billing (`@kyvvohq/asaas`); sem chave = modo log |
+| `CRM_CREDITOS_URL` / `CRM_CREDITOS_INTERNAL_TOKEN` | compra de créditos de WhatsApp do CRM (`routes/pagamentos-crm.js`): URL pública do endpoint do CRM que credita o saldo + segredo compartilhado (mesmo padrão de `PLATFORM_PAGAMENTOS_TOKEN`, só que na direção contrária — platform chamando o CRM) |
 | `PORT` | default `3003` |
 
 ## Deploy (quando ativar)

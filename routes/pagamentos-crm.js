@@ -16,6 +16,7 @@ const planos = require('../lib/planos');
 const asaasService = require('../asaas-service');
 const { UF_VALIDAS } = require('../lib/validadores');
 const { montarResumoPagamentos } = require('../lib/pagamentos');
+const { listarPacotes, obterPacote, confirmarCompraCreditos } = require('../lib/creditos-crm');
 
 function tokenInternoValido(headerRecebido, tokenEsperado) {
   return !!headerRecebido && !!tokenEsperado && headerRecebido === tokenEsperado;
@@ -263,6 +264,152 @@ function registerPagamentosCrmRoutes(fastify, pool) {
 
     await pool.query(`UPDATE tenants SET status = 'cancelado', cancelado_em = NOW(), acesso_ate = $2 WHERE id = $1`, [tenantId, acessoAte]);
     return { cancelado: true, acesso_ate: acessoAte };
+  });
+
+  // --- Créditos de WhatsApp (automações, compra avulsa) ----------------------
+  // Diferente do plano/assinatura acima: cobrança única via Asaas POST
+  // /payments (ver criarCobranca em @kyvvohq/asaas), não recorrente. O saldo
+  // em si vive no banco do CRM (debitado a cada disparo de automação) — aqui
+  // só fica o registro do pagamento, pra conferir o webhook e decidir quando
+  // avisar o CRM pra creditar (lib/creditos-crm#confirmarCompraCreditos).
+  fastify.get('/internal/pagamentos-crm/creditos/pacotes', guard, async () => listarPacotes());
+
+  fastify.get('/internal/pagamentos-crm/:tenantId/creditos', guard, async (request) => {
+    const { rows } = await pool.query(
+      `SELECT id, pacote_chave, quantidade_creditos, valor, meio, status, criado_em, creditado_em
+         FROM compras_creditos_crm WHERE tenant_id = $1 ORDER BY criado_em DESC LIMIT 10`,
+      [request.params.tenantId]
+    );
+    return rows;
+  });
+
+  fastify.post('/internal/pagamentos-crm/:tenantId/creditos/comprar', guard, async (request, reply) => {
+    const { tenantId } = request.params;
+    const {
+      pacote: pacoteChave, meio, email, nome,
+      cpf_cnpj: cpfCnpjBruto,
+      cartao_numero: cartaoNumeroBruto, cartao_nome: cartaoNome,
+      cartao_validade_mes: cartaoValidadeMes, cartao_validade_ano: cartaoValidadeAno, cartao_cvv: cartaoCvv,
+      telefone: telefoneBruto, endereco: enderecoBruto,
+    } = request.body || {};
+
+    const pacote = obterPacote(pacoteChave);
+    if (!pacote) return reply.code(400).send({ error: 'Pacote de créditos inválido.' });
+    if (!['pix', 'cartao'].includes(meio)) return reply.code(400).send({ error: 'Campo "meio" deve ser "pix" ou "cartao"' });
+    if (!(email || '').trim() || !(nome || '').trim()) return reply.code(400).send({ error: 'Nome e e-mail são obrigatórios.' });
+
+    const cartaoNumeroLimpo = String(cartaoNumeroBruto || '').replace(/\D/g, '');
+    if (meio === 'cartao') {
+      if (!CARTAO_FINAL_REGEX.test(cartaoNumeroLimpo.slice(-4))) return reply.code(400).send({ error: 'Informe um número de cartão válido.' });
+      if (!(cartaoNome || '').trim()) return reply.code(400).send({ error: 'Informe o nome impresso no cartão.' });
+      if (!/^\d{1,2}$/.test(cartaoValidadeMes || '') || !/^\d{4}$/.test(cartaoValidadeAno || '')) return reply.code(400).send({ error: 'Informe a validade do cartão (MM/AAAA).' });
+      if (!/^\d{3,4}$/.test(cartaoCvv || '')) return reply.code(400).send({ error: 'Informe o CVV do cartão.' });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT asaas_customer_id, cpf_cnpj, endereco_cep, endereco_logradouro, endereco_numero,
+              endereco_complemento, endereco_bairro, endereco_cidade, endereco_uf
+         FROM tenants WHERE id = $1`,
+      [tenantId]
+    );
+    const tenant = rows[0];
+    if (!tenant) return reply.code(404).send({ error: 'Tenant não encontrado' });
+
+    const cpfCnpjLimpo = String(cpfCnpjBruto || '').replace(/\D/g, '') || tenant.cpf_cnpj;
+    if (!tenant.asaas_customer_id && !CPF_CNPJ_REGEX.test(cpfCnpjLimpo || '')) {
+      return reply.code(400).send({ error: 'Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.' });
+    }
+
+    const telefoneLimpo = String(telefoneBruto || '').replace(/\D/g, '');
+    if (meio === 'cartao' && !/^\d{10,11}$/.test(telefoneLimpo || '')) {
+      return reply.code(400).send({ error: 'Informe o telefone (com DDD) do titular do cartão.' });
+    }
+
+    let endereco = {
+      cep: tenant.endereco_cep, logradouro: tenant.endereco_logradouro, numero: tenant.endereco_numero,
+      complemento: tenant.endereco_complemento, bairro: tenant.endereco_bairro,
+      cidade: tenant.endereco_cidade, uf: tenant.endereco_uf,
+    };
+    if (meio === 'cartao') {
+      if (enderecoBruto) {
+        const { cep, logradouro, numero, complemento, bairro, cidade, uf } = enderecoBruto;
+        const cepLimpo = String(cep || '').replace(/\D/g, '');
+        const enderecoValido =
+          /^\d{8}$/.test(cepLimpo) && (logradouro || '').trim() && (numero || '').trim() &&
+          (bairro || '').trim() && (cidade || '').trim() && UF_VALIDAS.includes(String(uf || '').toUpperCase());
+        if (!enderecoValido) return reply.code(400).send({ error: 'Preencha todos os campos do endereço.' });
+        endereco = {
+          cep: cepLimpo, logradouro: logradouro.trim(), numero: numero.trim(),
+          complemento: (complemento || '').trim() || null, bairro: bairro.trim(),
+          cidade: cidade.trim(), uf: String(uf).toUpperCase(),
+        };
+      } else if (!(endereco.cep && endereco.numero)) {
+        return reply.code(400).send({ error: 'Informe seu endereço para cadastrar um cartão.' });
+      }
+    }
+
+    const billingType = meio === 'pix' ? 'PIX' : 'CREDIT_CARD';
+    const hoje = new Date().toISOString().slice(0, 10);
+
+    let customer;
+    let pagamento;
+    try {
+      customer = await asaasService.criarOuRecuperarCustomer({ tenantId, nome, email, cpfCnpj: cpfCnpjLimpo, asaasCustomerId: tenant.asaas_customer_id });
+
+      let creditCardToken;
+      if (meio === 'cartao') {
+        const tokenizado = await asaasService.tokenizarCartao({
+          customerId: customer.id, holderName: cartaoNome.trim(), number: cartaoNumeroLimpo,
+          expiryMonth: cartaoValidadeMes, expiryYear: cartaoValidadeAno, ccv: cartaoCvv,
+          holderInfo: {
+            name: nome, email, cpfCnpj: cpfCnpjLimpo, postalCode: endereco.cep, addressNumber: endereco.numero,
+            addressComplement: endereco.complemento || undefined, mobilePhone: telefoneLimpo || undefined,
+          },
+          remoteIp: request.ip,
+        });
+        creditCardToken = tokenizado.creditCardToken;
+      }
+
+      pagamento = await asaasService.criarCobranca({
+        customerId: customer.id, billingType, valor: pacote.valor,
+        descricao: `Kyvvo CRM — ${pacote.quantidade} créditos de WhatsApp`,
+        dueDate: hoje, creditCardToken, tenantId, externalReference: `creditos_crm:${tenantId}`,
+      });
+    } catch (erro) {
+      request.log.error(`[pagamentos-crm] falha na compra de créditos do tenant ${tenantId}: ${erro.message}`);
+      return reply.code(400).send({ error: 'Não foi possível processar o pagamento agora. Tente novamente em instantes.' });
+    }
+
+    // Nasce sempre 'pendente' — cartão confirma na hora (chamada logo abaixo,
+    // mesma rotina do webhook); Pix só confirma depois, assíncrono.
+    const { rows: compraRows } = await pool.query(
+      `INSERT INTO compras_creditos_crm (tenant_id, pacote_chave, quantidade_creditos, valor, meio, asaas_customer_id, asaas_payment_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [tenantId, pacote.chave, pacote.quantidade, pacote.valor, meio, customer.id, pagamento.id]
+    );
+    const compraId = compraRows[0].id;
+
+    let pixQrCode = null;
+    if (meio === 'pix') {
+      try {
+        const qr = await asaasService.buscarPixQrCode(pagamento.id);
+        pixQrCode = { payload: qr.payload, encodedImage: qr.encodedImage, expirationDate: qr.expirationDate };
+      } catch (erro) {
+        request.log.error(`[pagamentos-crm] falha ao buscar QR code Pix (payment ${pagamento.id}): ${erro.message}`);
+      }
+    }
+
+    let status = 'pendente';
+    if (pagamento.status === 'CONFIRMED') {
+      try {
+        await confirmarCompraCreditos(pool, pagamento.id);
+        status = 'confirmada';
+      } catch (erro) {
+        request.log.error(`[pagamentos-crm] pagamento confirmado mas falha ao creditar no CRM (payment ${pagamento.id}): ${erro.message}`);
+      }
+    }
+
+    return { compraId, status, quantidade: pacote.quantidade, valor: pacote.valor, pixQrCode };
   });
 }
 
