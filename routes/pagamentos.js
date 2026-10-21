@@ -10,6 +10,7 @@ const { calcularTrialTenant } = require('../lib/trial-conta');
 const { UF_VALIDAS } = require('../lib/validadores');
 const { registrarEvento } = require('../lib/eventos');
 const { montarResumoPagamentos } = require('../lib/pagamentos');
+const { confirmarCompraCreditos } = require('../lib/creditos-crm');
 
 // US32/CA05 — data da primeira cobrança da assinatura Asaas: se o trial (14
 // dias a partir de `ativado_em`) ainda não acabou, a cobrança só nasce pra
@@ -459,6 +460,18 @@ function registerPagamentosRoutes(fastify, pool) {
     }
     const subscriptionId = (payment && payment.subscription) || (subscription && subscription.id);
     if (!subscriptionId) {
+      // Cobrança avulsa (sem subscription) confirmada: pode ser uma compra de
+      // créditos do CRM (compras_creditos_crm.asaas_payment_id) — qualquer
+      // outro `payment.id` sem correspondência é ignorado por
+      // confirmarCompraCreditos (devolve null), sem efeito.
+      if (payment && payment.id && (novoStatus === 'ativo')) {
+        try {
+          await confirmarCompraCreditos(pool, payment.id);
+        } catch (erro) {
+          console.error(`[pagamentos] falha ao confirmar compra de créditos (payment ${payment.id}): ${erro.message}`);
+          return reply.code(502).send({ error: 'Falha ao processar créditos' });
+        }
+      }
       return { ok: true };
     }
 
