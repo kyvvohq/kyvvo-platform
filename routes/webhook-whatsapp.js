@@ -34,12 +34,19 @@ function extrairPhoneNumberId(body) {
 // CRM (2026-09-24): número dedicado ao bot da Basic 3D Print — mesmo
 // raciocínio do People (produto com número(s) fixo(s) fora do pool de
 // tenants do Studio), checado antes do fallback pro Studio.
+// Kyvvo Atendimento (2026-10-21): número próprio da Kyvvo (não é tenant de
+// ninguém) — mensagens vão direto pro workflow n8n novo e isolado "Kyvvo —
+// Atendimento Geral/Suporte/Vendas" (nunca o v4/Bot Lucas), que lê/grava
+// direto nas tabelas do kyvvo-crm (crm_leads/crm_chamados/crm_clientes).
 function decidirDestino(phoneNumberId, env = process.env) {
   if (phoneNumberId && env.PEOPLE_PHONE_NUMBER_ID && phoneNumberId === env.PEOPLE_PHONE_NUMBER_ID) {
     return env.PEOPLE_WEBHOOK_URL || null;
   }
   if (phoneNumberId && env.CRM_PHONE_NUMBER_ID && phoneNumberId === env.CRM_PHONE_NUMBER_ID) {
     return env.CRM_WEBHOOK_URL || null;
+  }
+  if (phoneNumberId && env.KYVVO_ATENDIMENTO_PHONE_NUMBER_ID && phoneNumberId === env.KYVVO_ATENDIMENTO_PHONE_NUMBER_ID) {
+    return env.KYVVO_ATENDIMENTO_WEBHOOK_URL || null;
   }
   return env.STUDIO_WEBHOOK_URL || null;
 }

@@ -11,6 +11,8 @@ const ENV_PADRAO = {
   PEOPLE_WEBHOOK_URL: 'https://people.kyvvo.com.br/people/webhooks/whatsapp',
   CRM_PHONE_NUMBER_ID: '444555666',
   CRM_WEBHOOK_URL: 'https://crm.kyvvo.com.br/crm/api/webhook/whatsapp',
+  KYVVO_ATENDIMENTO_PHONE_NUMBER_ID: '777888999',
+  KYVVO_ATENDIMENTO_WEBHOOK_URL: 'http://n8n:5678/webhook/kyvvo-atendimento-whatsapp',
   STUDIO_WEBHOOK_URL: 'https://studio.kyvvo.com.br/webhook/whatsapp',
 };
 
@@ -25,6 +27,21 @@ test('decidirDestino: phone_number_id do CRM -> URL do CRM', () => {
 test('decidirDestino: sem CRM_PHONE_NUMBER_ID configurado, tudo cai no Studio (nunca confunde com CRM por acidente)', () => {
   const env = { ...ENV_PADRAO, CRM_PHONE_NUMBER_ID: undefined };
   assert.equal(decidirDestino('444555666', env), ENV_PADRAO.STUDIO_WEBHOOK_URL);
+});
+
+test('decidirDestino: phone_number_id do Kyvvo Atendimento -> URL do n8n (workflow novo, isolado do v4/Bot Lucas)', () => {
+  assert.equal(decidirDestino('777888999', ENV_PADRAO), ENV_PADRAO.KYVVO_ATENDIMENTO_WEBHOOK_URL);
+});
+
+test('decidirDestino: sem KYVVO_ATENDIMENTO_PHONE_NUMBER_ID configurado, tudo cai no Studio (nunca confunde por acidente)', () => {
+  const env = { ...ENV_PADRAO, KYVVO_ATENDIMENTO_PHONE_NUMBER_ID: undefined };
+  assert.equal(decidirDestino('777888999', env), ENV_PADRAO.STUDIO_WEBHOOK_URL);
+});
+
+test('decidirDestino: People, CRM e Kyvvo Atendimento nunca se confundem entre si (3 números fixos distintos)', () => {
+  assert.equal(decidirDestino(ENV_PADRAO.PEOPLE_PHONE_NUMBER_ID, ENV_PADRAO), ENV_PADRAO.PEOPLE_WEBHOOK_URL);
+  assert.equal(decidirDestino(ENV_PADRAO.CRM_PHONE_NUMBER_ID, ENV_PADRAO), ENV_PADRAO.CRM_WEBHOOK_URL);
+  assert.equal(decidirDestino(ENV_PADRAO.KYVVO_ATENDIMENTO_PHONE_NUMBER_ID, ENV_PADRAO), ENV_PADRAO.KYVVO_ATENDIMENTO_WEBHOOK_URL);
 });
 
 test('decidirDestino: qualquer outro phone_number_id (tenant do Studio) -> URL do Studio', () => {
