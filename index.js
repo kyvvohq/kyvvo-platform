@@ -40,7 +40,7 @@ const jwtRs256 = require('./lib/jwt-rs256');
 const PORT = process.env.PORT || 3003;
 
 function build() {
-  const fastify = Fastify({ logger: true });
+  const fastify = Fastify({ logger: true, trustProxy: true });
 
   // Mesmo padrão `init(pool)` do painel — os módulos compartilham o pool do
   // processo em vez de abrir conexão própria.
