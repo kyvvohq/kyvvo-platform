@@ -374,6 +374,7 @@ function registerPagamentosCrmRoutes(fastify, pool) {
         customerId: customer.id, billingType, valor: pacote.valor,
         descricao: `Kyvvo CRM — ${pacote.quantidade} créditos de WhatsApp`,
         dueDate: hoje, creditCardToken, tenantId, externalReference: `creditos_crm:${tenantId}`,
+        remoteIp: request.ip,
       });
     } catch (erro) {
       request.log.error(`[pagamentos-crm] falha na compra de créditos do tenant ${tenantId}: ${erro.message}`);
