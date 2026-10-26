@@ -377,7 +377,13 @@ function registerPagamentosCrmRoutes(fastify, pool) {
       });
     } catch (erro) {
       request.log.error(`[pagamentos-crm] falha na compra de créditos do tenant ${tenantId}: ${erro.message}`);
-      return reply.code(400).send({ error: 'Não foi possível processar o pagamento agora. Tente novamente em instantes.' });
+      // Diferente do cancelamento/troca de plano (mensagem genérica de
+      // propósito): aqui a mensagem da Asaas costuma ser acionável pelo
+      // próprio tenant (CPF/cartão invalido) OU sinaliza config de conta que
+      // o Bruno precisa resolver direto com a Asaas (ex.: permissão de
+      // cobrança avulsa) — nos dois casos, esconder o texto só confunde quem
+      // está testando/reportando o problema.
+      return reply.code(400).send({ error: erro.message || 'Não foi possível processar o pagamento agora. Tente novamente em instantes.' });
     }
 
     // Nasce sempre 'pendente' — cartão confirma na hora (chamada logo abaixo,
