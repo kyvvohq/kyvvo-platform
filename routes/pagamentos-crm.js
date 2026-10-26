@@ -134,8 +134,12 @@ function registerPagamentosCrmRoutes(fastify, pool) {
 
     // Diferente do Studio (que sempre tem um plano padrão pra sair do
     // trial): CRM exige escolha explícita de plano na primeira assinatura —
-    // sem fallback silencioso pro plano de outro produto.
-    const chavePlano = tenant.plano || planoChave;
+    // sem fallback silencioso pro plano de outro produto. `tenant.plano`
+    // só vale como "já escolhido" quando a assinatura está ativa — cancelada
+    // mantém o campo preenchido só pra exibição (ver plano-cobranca.html),
+    // senão reassinar escolhendo um plano diferente do que tinha era
+    // ignorado silenciosamente (achado 2026-10-26).
+    const chavePlano = (tenant.status !== 'cancelado' && tenant.plano) || planoChave;
     if (!chavePlano) return reply.code(400).send({ error: 'Escolha um plano.' });
     const planoInfo = planos.obterPlano(chavePlano);
     if (!planoInfo) return reply.code(400).send({ error: 'Plano não encontrado.' });
