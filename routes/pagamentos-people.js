@@ -188,7 +188,8 @@ function registerPagamentosPeopleRoutes(fastify, pool, peoplePool) {
           customerId: customer.id,
           holderName: cartaoNome.trim(),
           number: cartaoNumeroLimpo,
-          expiryMonth: cartaoValidadeMes,
+          // Padding pro formato que a Asaas exige — ver pagamentos.js.
+          expiryMonth: String(cartaoValidadeMes).padStart(2, '0'),
           expiryYear: cartaoValidadeAno,
           ccv: cartaoCvv,
           holderInfo: {

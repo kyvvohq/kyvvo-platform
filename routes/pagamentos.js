@@ -224,7 +224,11 @@ function registerPagamentosRoutes(fastify, pool) {
           customerId: customer.id,
           holderName: cartaoNome.trim(),
           number: cartaoNumeroLimpo,
-          expiryMonth: cartaoValidadeMes,
+          // A Asaas exige MM com 2 dígitos; o form só valida 1-2 dígitos
+          // (campo de texto livre "MM/AAAA", sem máscara) — cartão com
+          // vencimento jan-set digitado sem o zero (ex.: "8") chegava cru
+          // e a Asaas recusava com invalid_creditCard (achado 2026-10-28).
+          expiryMonth: String(cartaoValidadeMes).padStart(2, '0'),
           expiryYear: cartaoValidadeAno,
           ccv: cartaoCvv,
           holderInfo: {

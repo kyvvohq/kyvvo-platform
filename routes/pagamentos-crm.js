@@ -160,7 +160,8 @@ function registerPagamentosCrmRoutes(fastify, pool) {
           customerId: customer.id,
           holderName: cartaoNome.trim(),
           number: cartaoNumeroLimpo,
-          expiryMonth: cartaoValidadeMes,
+          // Padding pro formato que a Asaas exige — ver pagamentos.js.
+          expiryMonth: String(cartaoValidadeMes).padStart(2, '0'),
           expiryYear: cartaoValidadeAno,
           ccv: cartaoCvv,
           holderInfo: {
@@ -364,7 +365,8 @@ function registerPagamentosCrmRoutes(fastify, pool) {
       if (meio === 'cartao') {
         const tokenizado = await asaasService.tokenizarCartao({
           customerId: customer.id, holderName: cartaoNome.trim(), number: cartaoNumeroLimpo,
-          expiryMonth: cartaoValidadeMes, expiryYear: cartaoValidadeAno, ccv: cartaoCvv,
+          // Padding pro formato que a Asaas exige — ver pagamentos.js.
+          expiryMonth: String(cartaoValidadeMes).padStart(2, '0'), expiryYear: cartaoValidadeAno, ccv: cartaoCvv,
           holderInfo: {
             name: nome, email, cpfCnpj: cpfCnpjLimpo, postalCode: endereco.cep, addressNumber: endereco.numero,
             addressComplement: endereco.complemento || undefined, mobilePhone: telefoneLimpo || undefined,
